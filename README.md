@@ -1,95 +1,74 @@
-# Health Supply Chain Platform — RBAC & Authentication Backend
+# Health Supply Chain Platform — Web Frontend
 
-Multi-tenant health supply chain backend for India built with **Python 3.11+**, **FastAPI**, **SQLAlchemy 2.x**, **Pydantic v2**, **PostgreSQL 16**, **Redis 7**, and **Alembic**.
+Interactive React 19 + TypeScript + Vite web application for the Multi-tenant Health Supply Chain Platform.
 
-Provides multi-tenant geographic isolation (National, State, District, PHC), strict Role-Based Access Control (RBAC), revocable JWT access & refresh tokens, and tamper-evident audit logging.
-
----
-
-## Architecture & Tenancy Model
-
-### Geographic Multi-Tenancy
-1. **Platform (Super Admin)**: Bypasses all geographic filtering, manages permissions and system-level operations.
-2. **National**: National-level visibility across all states and districts.
-3. **State**: Tenanted to `state_id`. Can access and manage entities within their designated state.
-4. **District**: Tenanted to `district_id`. Users from District A (e.g. Ramgarh) are strictly prevented from querying or altering data in District B (e.g. Ranchi).
-5. **PHC**: Tenanted to `facility_id` (PHC/CHC). Operators and Approvers can only manage inventory and operations within their facility.
-
-### Security Guarantees
-- **Access Tokens**: Short-lived (15 minutes), signed with HMAC-SHA256.
-- **Refresh Tokens**: Long-lived (7 days), stored hashed (SHA-256) in the database, revocable immediately upon logout.
-- **Password Security**: Passlib with bcrypt, minimum 8 characters.
-- **Audit Logging**: Every login, logout, permission denial, and scoped data access is written to `audit_logs` without PII.
-- **Permission Checking**: Strictly enforced via `Depends(require_permission('permission_name'))`.
+Provides role-specific interactive workspaces for System Admins, National, State, District Health Officers, and PHC Pharmacists with visual workflow management, RBAC access checks, and federated supply insights.
 
 ---
 
-## Quickstart with Docker Compose
+## 🚀 Getting Started
 
-### 1. Configure Environment
+### Prerequisites
+- **Node.js**: v18.x or v20.x+
+- **npm**: v9.x+
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Environment Setup
+Copy `.env.example` to `.env` (optional, for configuring external backend URL):
 ```bash
 cp .env.example .env
 ```
 
-### 2. Launch Services
-Run the API, PostgreSQL 16, and Redis 7 containers:
-```bash
-docker-compose up --build
-```
-This automatically runs Alembic migrations, executes `seed.py` (populating geography and 24 role accounts), and boots the Uvicorn server on port `8000`.
+`VITE_BACKEND_URL` defaults to the production cloud backend API URL, but can also be overridden inside the UI settings or via `.env`.
 
-### 3. Interactive Documentation
-- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+### 3. Start Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Local Development (Without Docker)
+## 🛠️ Build & Scripts
 
-### 1. Create Virtualenv & Install Dependencies
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 2. Run Database Migrations
-```bash
-alembic upgrade head
-```
-
-### 3. Seed Database
-```bash
-python seed.py
-# Or reset and reseed:
-python seed.py --reset
-```
-
-### 4. Run Development Server
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+- **`npm run dev`**: Launch local Vite development server with HMR.
+- **`npm run build`**: Build production distribution bundle in `dist/`.
+- **`npm run preview`**: Locally preview production build.
+- **`npm run lint`**: Run TypeScript type-checking (`tsc --noEmit`).
 
 ---
 
-## Running Automated Tests
+## 🐳 Docker Containerization
 
-Run the complete test suite covering all 10 RBAC and tenancy scenarios:
+To build and run the frontend in a container using Nginx:
+
 ```bash
-pytest -v tests/test_auth.py
+docker build -t health-chain-frontend .
+docker run -p 8080:8080 health-chain-frontend
 ```
+Then access the application at [http://localhost:8080](http://localhost:8080).
 
 ---
 
-## Pre-Seeded Test Credentials
-All seeded users share the password: `Test@123`
+## 📂 Project Structure
 
-| Role | Geographic Scope | Email |
-| :--- | :--- | :--- |
-| **Super Admin** | Platform (Bypass) | `superadmin@hsc.gov.in` |
-| **National Viewer** | National | `national.viewer@hsc.gov.in` |
-| **State Approver** | Jharkhand (JH) | `state.approver.jh@hsc.gov.in` |
-| **District Approver** | Ramgarh (JH) | `district.approver.ram@hsc.gov.in` |
-| **District Approver** | Ranchi (JH) | `district.approver.ran@hsc.gov.in` |
-| **PHC Operator** | Patratu PHC (Ramgarh) | `phc.operator.pat_phc@hsc.gov.in` |
-| **PHC Approver** | Patratu PHC (Ramgarh) | `phc.approver.pat_phc@hsc.gov.in` |
+```
+├── public/              # Static assets
+├── src/
+│   ├── components/      # UI components & role-specific dashboards
+│   ├── context/         # React Context (Auth, Theme, Loggers)
+│   ├── data/            # Seed accounts & mock datasets
+│   ├── services/        # API service layer (authApi.ts, geminiApi.ts)
+│   ├── types.ts         # TypeScript interfaces & types
+│   ├── App.tsx          # Main Application component
+│   └── main.tsx         # React root entry point
+├── Dockerfile           # Multi-stage Docker build with Nginx
+├── nginx.conf           # Nginx server configuration
+├── index.html           # HTML template
+├── package.json         # Dependencies and npm scripts
+└── vite.config.ts       # Vite configuration
+```
