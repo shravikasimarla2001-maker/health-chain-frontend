@@ -54,7 +54,7 @@ Then access the application at [http://localhost:8080](http://localhost:8080).
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Structuree
 
 ```
 ├── public/              # Static assets
