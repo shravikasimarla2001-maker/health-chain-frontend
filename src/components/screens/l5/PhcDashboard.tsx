@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Hospital,
   Package,
@@ -9,9 +9,8 @@ import {
   TrendingDown,
   CheckCircle2,
   AlertTriangle,
-  QrCode,
   Send,
-  Truck,
+  Calendar,
 } from 'lucide-react';
 import { InventoryItem, BedCategory, StaffMember } from '../../../types';
 
@@ -28,6 +27,8 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
   staff = [],
   onNavigate,
 }) => {
+  const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
+
   const safeInventory = inventory || [];
   const safeBeds = beds || [];
   const safeStaff = staff || [];
@@ -45,12 +46,12 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10" id="phc-dashboard">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-teal-950/70 via-slate-900 to-slate-900 border border-teal-800/40 rounded-xl p-6 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-950/80 via-slate-900 to-slate-900 border border-teal-800/40 rounded-xl p-6 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-900/60 text-teal-300 border border-teal-700/50">
-                L5 — Primary Health Centre
+                L5 — Primary Health Centre (Own PHC Only)
               </span>
               <span className="text-xs text-slate-400">Ormanjhi PHC, Ranchi District, Jharkhand</span>
             </div>
@@ -81,30 +82,68 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
         </div>
       </div>
 
-      {/* 4 Primary Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Stock Status */}
+      {/* Toolbar: Time Horizon Toggle */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-2">
+          <Hospital className="w-4 h-4 text-teal-400" />
+          <span className="font-semibold text-slate-300">Facility Location:</span>
+          <span className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-200 font-mono">
+            Ormanjhi PHC (Facility ID: PHC-ORI-842)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <Calendar className="w-4 h-4 text-slate-400 ml-1" />
+          <span className="text-slate-400 font-medium mr-1">Projection Mode:</span>
+          <button
+            type="button"
+            onClick={() => setViewMode('15_DAYS')}
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
+              viewMode === '15_DAYS'
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            15-Day Demand View
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('BUFFER_DAYS')}
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
+              viewMode === 'BUFFER_DAYS'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Buffer Days Remaining
+          </button>
+        </div>
+      </div>
+
+      {/* 3 Combined Primary Metric Cards (Stock + Beds + Staff) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Drug Stock Status */}
         <div
           onClick={() => onNavigate('inventory_management')}
-          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors"
+          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors space-y-3"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Drug Inventory Health</span>
             <Package className="w-4 h-4 text-teal-400" />
           </div>
-          <div className="flex items-baseline gap-2 mt-2">
+          <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-100">{inventory.length}</span>
             <span className="text-xs text-slate-400">monitored drugs</span>
           </div>
-          <div className="flex items-center gap-2 mt-3 text-xs">
-            <span className="px-2 py-0.5 rounded bg-red-950/80 text-red-400 border border-red-800 font-semibold">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <span className="px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800 font-bold">
               🔴 {criticalCount} Critical
             </span>
-            <span className="px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800 font-semibold">
+            <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 font-bold">
               🟡 {reorderCount} Reorder
             </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800 font-semibold">
-              🟢 {adequateCount}
+            <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold">
+              🟢 {adequateCount} Safe
             </span>
           </div>
         </div>
@@ -112,59 +151,42 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
         {/* Card 2: Bed Occupancy */}
         <div
           onClick={() => onNavigate('bed_management')}
-          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors"
+          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors space-y-3"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Bed Occupancy Status</span>
+            <span className="text-xs font-medium text-slate-400">Inpatient Bed Occupancy</span>
             <Bed className="w-4 h-4 text-blue-400" />
           </div>
-          <div className="flex items-baseline gap-2 mt-2">
+          <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-100">{occupiedBeds}</span>
             <span className="text-xs text-slate-400">/ {totalBeds} occupied</span>
           </div>
-          <div className="flex items-center justify-between text-xs mt-3">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-emerald-400 font-semibold">{availableBeds} beds vacant</span>
             <span className="text-slate-400 font-mono">{Math.round((occupiedBeds / totalBeds) * 100)}% utilized</span>
           </div>
         </div>
 
-        {/* Card 3: Staff Attendance */}
+        {/* Card 3: Staff Duty Roster */}
         <div
           onClick={() => onNavigate('staff_attendance')}
-          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors"
+          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors space-y-3"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-400">Staff On Duty</span>
             <UserCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="flex items-baseline gap-2 mt-2">
+          <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-emerald-400">{presentStaff}</span>
-            <span className="text-xs text-slate-400">/ {staff.length} rostered</span>
+            <span className="text-xs text-slate-400">/ {staff.length} rostered staff</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 mt-3">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Medical Officer Present
-          </div>
-        </div>
-
-        {/* Card 4: Urgent Alerts */}
-        <div
-          onClick={() => onNavigate('alerts')}
-          className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Facility Active Alerts</span>
-            <AlertCircle className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl font-bold text-amber-400">2 Active</span>
-          </div>
-          <div className="text-xs text-slate-400 mt-3 truncate">
-            Paracetamol stock-out & Cold freezer warning
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Medical Officer & Pharmacist Present
           </div>
         </div>
       </div>
 
-      {/* Critical Shortage Alert Banner */}
+      {/* Critical Stock-Out Alert Banner */}
       {criticalCount > 0 && (
         <div className="p-4 bg-red-950/60 border border-red-800/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-3">
@@ -173,10 +195,10 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-red-200">
-                Critical Stock-Out Alert: {criticalCount} Life-Saving Drugs Below Safety Buffer
+                🔴 Critical Shortage Alert: {criticalCount} Life-Saving Medicine Below Safety Runway
               </h3>
               <p className="text-xs text-red-300 mt-0.5">
-                Paracetamol 500mg, BCG Vaccine, and Human Insulin Regular require immediate district replenishment or inter-PHC transfer.
+                Paracetamol 500mg, BCG Vaccine, and Human Insulin Regular require immediate district replenishment or peer PHC transfer.
               </p>
             </div>
           </div>
@@ -194,7 +216,7 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
               onClick={() => onNavigate('redistribution_requests')}
               className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded text-xs font-semibold whitespace-nowrap transition-colors"
             >
-              Transfer Inbound
+              Inbound Peer Pull
             </button>
           </div>
         </div>
@@ -233,6 +255,11 @@ export const PhcDashboard: React.FC<PhcDashboardProps> = ({
                 <div className="text-right">
                   <div className="font-bold text-slate-100">
                     {item.currentStock} <span className="text-[11px] font-normal text-slate-400">{item.unit}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    {viewMode === '15_DAYS'
+                      ? `${item.daysOfSupply || 4} Days Supply`
+                      : `Buffer: ${Math.max(1, (item.daysOfSupply || 4) - 2)} Days`}
                   </div>
                   <span
                     className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold mt-1 ${

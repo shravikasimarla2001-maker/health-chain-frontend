@@ -406,13 +406,14 @@ export const DashboardScreen: React.FC = () => {
             <select
               value={activeTier}
               onChange={(e) => handleSwitchTier(e.target.value as RoleTier)}
-              className="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:border-teal-500"
+              className="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:border-teal-500 font-medium"
             >
-              <option value="L0">L0 — System / FL Admin</option>
-              <option value="L1">L1 — National Health Officer</option>
-              <option value="L2">L2 — State Health Officer (JH)</option>
-              <option value="L3">L3 — District Health Officer (Ranchi)</option>
-              <option value="L5">L5 — PHC Pharmacist (Ormanjhi)</option>
+              <option value="L0">1. SUPER ADMIN (FL & Global Settings)</option>
+              <option value="L1">2. NATIONAL USER (All India Command)</option>
+              <option value="L2">3. STATE USER (Jharkhand Directorate)</option>
+              <option value="L3">4. DISTRICT USER (Ranchi District Hub)</option>
+              <option value="L5">5. PHC USER (Ormanjhi Medical Officer)</option>
+              <option value="L5">6. PHC OPERATOR (Ground Inventory/Beds/Staff)</option>
             </select>
           </div>
         </div>
