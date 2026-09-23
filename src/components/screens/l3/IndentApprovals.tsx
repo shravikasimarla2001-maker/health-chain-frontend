@@ -53,7 +53,7 @@ export const IndentApprovals: React.FC = () => {
           PHC Stock Indent Requisitions & Approval Matrix
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Review PULL (Demand-Driven) and PUSH (Forecast-Driven) stock requisitions submitted by PHCs using the National Approval Matrix (<5% Peer, 5-15% Peer+Supervisor, >15% Peer+National, Emergency Pre-Approved).
+          Review PULL (Demand-Driven) and PUSH (Forecast-Driven) stock requisitions submitted by PHCs using the National Approval Matrix (&lt;5% Peer, 5-15% Peer+Supervisor, &gt;15% Peer+National, Emergency Pre-Approved).
         </p>
       </div>
 
