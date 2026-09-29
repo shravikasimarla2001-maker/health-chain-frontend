@@ -13,6 +13,7 @@ import {
   Layers,
   ShieldCheck,
 } from 'lucide-react';
+import { ALL_STATES } from '../../../data/geoConstants';
 
 interface StateSummary {
   code: string;
@@ -43,58 +44,6 @@ const STATE_DATA: StateSummary[] = [
     bufferDaysRemaining: 5,
   },
   {
-    code: 'BH',
-    name: 'Bihar',
-    stockOutRisk: 'HIGH',
-    riskScore: 72,
-    totalFacilities: 2450,
-    totalBeds: 18200,
-    occupiedBeds: 15400,
-    staffAttendanceRate: 82.1,
-    activeCriticalAlerts: 8,
-    fifteenDayStockDays: 6,
-    bufferDaysRemaining: 2,
-  },
-  {
-    code: 'OR',
-    name: 'Odisha',
-    stockOutRisk: 'LOW',
-    riskScore: 24,
-    totalFacilities: 1620,
-    totalBeds: 11200,
-    occupiedBeds: 7200,
-    staffAttendanceRate: 91.5,
-    activeCriticalAlerts: 1,
-    fifteenDayStockDays: 14,
-    bufferDaysRemaining: 9,
-  },
-  {
-    code: 'WB',
-    name: 'West Bengal',
-    stockOutRisk: 'MEDIUM',
-    riskScore: 44,
-    totalFacilities: 2180,
-    totalBeds: 16500,
-    occupiedBeds: 12100,
-    staffAttendanceRate: 86.8,
-    activeCriticalAlerts: 4,
-    fifteenDayStockDays: 10,
-    bufferDaysRemaining: 4,
-  },
-  {
-    code: 'UP',
-    name: 'Uttar Pradesh',
-    stockOutRisk: 'HIGH',
-    riskScore: 68,
-    totalFacilities: 4900,
-    totalBeds: 34000,
-    occupiedBeds: 28900,
-    staffAttendanceRate: 84.0,
-    activeCriticalAlerts: 12,
-    fifteenDayStockDays: 7,
-    bufferDaysRemaining: 3,
-  },
-  {
     code: 'MH',
     name: 'Maharashtra',
     stockOutRisk: 'LOW',
@@ -117,16 +66,21 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
   const [selectedStateCode, setSelectedStateCode] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
 
+  // Filter STATE_DATA to include ONLY states present in geoConstants
+  const availableStates = STATE_DATA.filter((st) =>
+    ALL_STATES.some((s) => s.code.toUpperCase() === st.code.toUpperCase())
+  );
+
   const filteredStates =
     selectedStateCode === 'ALL'
-      ? STATE_DATA
-      : STATE_DATA.filter((st) => st.code === selectedStateCode);
+      ? availableStates
+      : availableStates.filter((st) => st.code === selectedStateCode);
 
   const totalFacilities = filteredStates.reduce((acc, st) => acc + st.totalFacilities, 0);
   const totalBeds = filteredStates.reduce((acc, st) => acc + st.totalBeds, 0);
   const occupiedBeds = filteredStates.reduce((acc, st) => acc + st.occupiedBeds, 0);
   const avgStaff = Math.round(
-    filteredStates.reduce((acc, st) => acc + st.staffAttendanceRate, 0) / filteredStates.length
+    filteredStates.reduce((acc, st) => acc + st.staffAttendanceRate, 0) / (filteredStates.length || 1)
   );
   const totalCriticalAlerts = filteredStates.reduce((acc, st) => acc + st.activeCriticalAlerts, 0);
 
@@ -194,8 +148,8 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
             onChange={(e) => setSelectedStateCode(e.target.value)}
             className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-blue-500"
           >
-            <option value="ALL">All India (Aggregated Across States)</option>
-            {STATE_DATA.map((st) => (
+            <option value="ALL">All States (Available in System)</option>
+            {availableStates.map((st) => (
               <option key={st.code} value={st.code}>
                 {st.name} ({st.code})
               </option>
@@ -210,22 +164,20 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
           <button
             type="button"
             onClick={() => setViewMode('15_DAYS')}
-            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
-              viewMode === '15_DAYS'
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${viewMode === '15_DAYS'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             15-Day Demand View
           </button>
           <button
             type="button"
             onClick={() => setViewMode('BUFFER_DAYS')}
-            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${
-              viewMode === 'BUFFER_DAYS'
+            className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${viewMode === 'BUFFER_DAYS'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             Buffer Days Remaining
           </button>
@@ -334,11 +286,10 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <span
-                      className={`px-2 py-0.5 rounded text-xs font-bold ${
-                        st.activeCriticalAlerts > 5
+                      className={`px-2 py-0.5 rounded text-xs font-bold ${st.activeCriticalAlerts > 5
                           ? 'text-red-400 bg-red-950/80 border border-red-800'
                           : 'text-slate-300 bg-slate-800'
-                      }`}
+                        }`}
                     >
                       {st.activeCriticalAlerts} Alerts
                     </span>

@@ -314,7 +314,7 @@ export const UserManagement: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto text-xs">
-          {['ALL', 'PLATFORM', 'NATIONAL', 'STATE', 'DISTRICT', 'PHC'].map((scope) => (
+          {['ALL', 'platform', 'national', 'state', 'district', 'phc'].map((scope) => (
             <button
               key={scope}
               type="button"
@@ -586,11 +586,11 @@ export const UserManagement: React.FC = () => {
                     onChange={(e) => handleScopeLevelChange(e.target.value as ScopeLevelEnum)}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-purple-500 font-medium"
                   >
-                    <option value="platform">platform (L0 Platform Admin)</option>
-                    <option value="national">national (L1 National Governance)</option>
-                    <option value="state">state (L2 State Health Department)</option>
-                    <option value="district">district (L3 District Health Society)</option>
-                    <option value="phc">phc (L5 Primary Health Centre)</option>
+                    <option value="platform">platform</option>
+                    <option value="national">national</option>
+                    <option value="state">state</option>
+                    <option value="district">district</option>
+                    <option value="phc">phc</option>
                   </select>
                 </div>
 
@@ -611,13 +611,6 @@ export const UserManagement: React.FC = () => {
                         <option value="PHC Approver">PHC Approver (MO)</option>
                       </>
                     )}
-                    {/* Fallback all roles */}
-                    <option value="Super Admin">Super Admin (L0)</option>
-                    <option value="National Viewer">National Viewer (L1)</option>
-                    <option value="State Approver">State Approver (L2)</option>
-                    <option value="District Approver">District Approver (L3)</option>
-                    <option value="PHC Approver">PHC Approver (MO)</option>
-                    <option value="PHC Operator">PHC Operator</option>
                   </select>
                 </div>
               </div>

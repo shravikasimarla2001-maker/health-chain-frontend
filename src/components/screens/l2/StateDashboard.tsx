@@ -12,6 +12,8 @@ import {
   Layers,
 } from 'lucide-react';
 
+import { ALL_DISTRICTS } from '../../data/geoConstants';
+
 interface DistrictMetric {
   code: string;
   name: string;
@@ -43,20 +45,6 @@ const JHARKHAND_DISTRICTS: DistrictMetric[] = [
     lastDataSync: '3 mins ago',
   },
   {
-    code: 'BOK',
-    name: 'Bokaro District',
-    facilitiesCount: 28,
-    stockOutRisk: 'HIGH',
-    bedOccupancyPercent: 84,
-    totalBeds: 1600,
-    occupiedBeds: 1344,
-    staffAttendanceRate: 83.5,
-    criticalShortages: ['Anti-Rabies Vaccine', 'ORS Sachets'],
-    fifteenDayStockDays: 5,
-    bufferDaysRemaining: 2,
-    lastDataSync: '5 mins ago',
-  },
-  {
     code: 'RAM',
     name: 'Ramgarh District',
     facilitiesCount: 22,
@@ -70,20 +58,6 @@ const JHARKHAND_DISTRICTS: DistrictMetric[] = [
     bufferDaysRemaining: 8,
     lastDataSync: '12 mins ago',
   },
-  {
-    code: 'DHN',
-    name: 'Dhanbad District',
-    facilitiesCount: 36,
-    stockOutRisk: 'LOW',
-    bedOccupancyPercent: 71,
-    totalBeds: 2100,
-    occupiedBeds: 1491,
-    staffAttendanceRate: 88.0,
-    criticalShortages: ['Oxygen Cylinders (Low Buffer)'],
-    fifteenDayStockDays: 12,
-    bufferDaysRemaining: 6,
-    lastDataSync: '8 mins ago',
-  },
 ];
 
 interface StateDashboardProps {
@@ -94,16 +68,21 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
 
+  // Filter districts to include ONLY next level districts present in geoConstants
+  const availableDistricts = JHARKHAND_DISTRICTS.filter((d) =>
+    ALL_DISTRICTS.some((geo) => geo.code.toUpperCase() === d.code.toUpperCase())
+  );
+
   const filteredDistricts =
     selectedDistrictCode === 'ALL'
-      ? JHARKHAND_DISTRICTS
-      : JHARKHAND_DISTRICTS.filter((d) => d.code === selectedDistrictCode);
+      ? availableDistricts
+      : availableDistricts.filter((d) => d.code === selectedDistrictCode);
 
   const totalFacilities = filteredDistricts.reduce((acc, d) => acc + d.facilitiesCount, 0);
   const totalBeds = filteredDistricts.reduce((acc, d) => acc + d.totalBeds, 0);
   const occupiedBeds = filteredDistricts.reduce((acc, d) => acc + d.occupiedBeds, 0);
   const avgStaff = Math.round(
-    filteredDistricts.reduce((acc, d) => acc + d.staffAttendanceRate, 0) / filteredDistricts.length
+    filteredDistricts.reduce((acc, d) => acc + d.staffAttendanceRate, 0) / (filteredDistricts.length || 1)
   );
 
   const getRiskBadge = (risk: string) => {
@@ -169,8 +148,8 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
             onChange={(e) => setSelectedDistrictCode(e.target.value)}
             className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-emerald-500"
           >
-            <option value="ALL">All Districts (Jharkhand Aggregated)</option>
-            {JHARKHAND_DISTRICTS.map((d) => (
+            <option value="ALL">All Districts (Available in State)</option>
+            {availableDistricts.map((d) => (
               <option key={d.code} value={d.code}>
                 {d.name} ({d.code})
               </option>

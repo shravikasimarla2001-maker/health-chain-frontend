@@ -12,6 +12,8 @@ import {
   Calendar,
 } from 'lucide-react';
 
+import { ALL_PHCS } from '../../data/geoConstants';
+
 interface PhcOverview {
   id: string;
   name: string;
@@ -28,7 +30,7 @@ interface PhcOverview {
 
 const RANCHI_PHCS: PhcOverview[] = [
   {
-    id: 'phc-ori',
+    id: '150038ee-f99b-42ea-acb8-656fe0335361',
     name: 'Ormanjhi PHC',
     medicalOfficer: 'Dr. Rameshwar Mahto',
     stockStatus: 'CRITICAL',
@@ -41,7 +43,7 @@ const RANCHI_PHCS: PhcOverview[] = [
     bufferDaysRemaining: 1,
   },
   {
-    id: 'phc-kan',
+    id: 'a1b912f5-0abb-4bf9-b88c-8dd73234e33b',
     name: 'Kanke PHC',
     medicalOfficer: 'Dr. S. Kispotta',
     stockStatus: 'ADEQUATE',
@@ -53,32 +55,6 @@ const RANCHI_PHCS: PhcOverview[] = [
     fifteenDayStockDays: 14,
     bufferDaysRemaining: 8,
   },
-  {
-    id: 'phc-bun',
-    name: 'Bundu PHC',
-    medicalOfficer: 'Dr. Alok Baraik',
-    stockStatus: 'REORDER',
-    totalBeds: 30,
-    occupiedBeds: 21,
-    staffPresentCount: 4,
-    totalStaffCount: 5,
-    pendingIndents: 0,
-    fifteenDayStockDays: 9,
-    bufferDaysRemaining: 4,
-  },
-  {
-    id: 'phc-sil',
-    name: 'Silli PHC',
-    medicalOfficer: 'Dr. Meena Soren',
-    stockStatus: 'ADEQUATE',
-    totalBeds: 25,
-    occupiedBeds: 12,
-    staffPresentCount: 5,
-    totalStaffCount: 5,
-    pendingIndents: 0,
-    fifteenDayStockDays: 15,
-    bufferDaysRemaining: 10,
-  },
 ];
 
 interface DistrictDashboardProps {
@@ -89,8 +65,20 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
   const [selectedPhcId, setSelectedPhcId] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
 
+  // Filter PHCs to include ONLY next level PHC facilities present in geoConstants
+  const availablePhcs = RANCHI_PHCS.filter((p) =>
+    ALL_PHCS.some(
+      (geo) =>
+        geo.id === p.id ||
+        geo.name.toLowerCase().includes(p.name.toLowerCase()) ||
+        p.name.toLowerCase().includes(geo.name.toLowerCase())
+    )
+  );
+
   const filteredPhcs =
-    selectedPhcId === 'ALL' ? RANCHI_PHCS : RANCHI_PHCS.filter((p) => p.id === selectedPhcId);
+    selectedPhcId === 'ALL'
+      ? availablePhcs
+      : availablePhcs.filter((p) => p.id === selectedPhcId);
 
   const totalBeds = filteredPhcs.reduce((acc, p) => acc + p.totalBeds, 0);
   const occupiedBeds = filteredPhcs.reduce((acc, p) => acc + p.occupiedBeds, 0);
@@ -159,8 +147,8 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
             onChange={(e) => setSelectedPhcId(e.target.value)}
             className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-amber-500"
           >
-            <option value="ALL">All PHCs (Ranchi District Aggregated)</option>
-            {RANCHI_PHCS.map((p) => (
+            <option value="ALL">All PHCs (Available in District)</option>
+            {availablePhcs.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
