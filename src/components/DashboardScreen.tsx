@@ -32,6 +32,8 @@ import {
   LineChart,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { SUPPORTED_LANGUAGES } from '../i18n/translations';
 import { RoleTier, AlertNotification } from '../types';
 import { resolveUserTier, getTierNavItems, getDefaultScreenForTier, ROLE_TIER_METADATA } from '../utils/rbac';
 import { SEED_ACCOUNTS } from '../data/seedAccounts';
@@ -46,7 +48,6 @@ import { AdminDashboard } from './screens/l0/AdminDashboard';
 import { UserManagement } from './screens/l0/UserManagement';
 import { FlOrchestration } from './screens/l0/FlOrchestration';
 import { NodeManagement } from './screens/l0/NodeManagement';
-import { AuditLogs } from './screens/l0/AuditLogs';
 import { SystemSettings } from './screens/l0/SystemSettings';
 
 // L1 Screens
@@ -92,7 +93,7 @@ export const DashboardScreen: React.FC = () => {
   const initialTier = resolveUserTier(user);
   const [activeTier, setActiveTier] = useState<RoleTier>(initialTier);
   const [currentScreen, setCurrentScreen] = useState<string>(getDefaultScreenForTier(initialTier));
-  const [language, setLanguage] = useState<string>(user?.language_pref || 'English');
+  const { language, setLanguage, t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // App-level mutable state for PHC operations & alerts
@@ -215,8 +216,6 @@ export const DashboardScreen: React.FC = () => {
           return <FlOrchestration />;
         case 'node_management':
           return <NodeManagement />;
-        case 'audit_logs':
-          return <AuditLogs />;
         case 'system_settings':
           return <SystemSettings />;
         default:
@@ -319,6 +318,8 @@ export const DashboardScreen: React.FC = () => {
           );
         case 'stock_request':
           return <StockRequestIndent inventory={inventory} />;
+        case 'indent_approvals':
+          return <IndentApprovals />;
         case 'redistribution_requests':
           return <PhcRedistribution />;
         case 'forecast_view':
@@ -401,19 +402,18 @@ export const DashboardScreen: React.FC = () => {
           {/* Quick Demo Switcher Dropdown (to test each role effortlessly) */}
           <div className="pt-2 border-t border-slate-800/80">
             <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              Switch Role View (Demo RBAC)
+              {t('tier.switch_role')}
             </label>
             <select
               value={activeTier}
               onChange={(e) => handleSwitchTier(e.target.value as RoleTier)}
               className="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:border-teal-500 font-medium"
             >
-              <option value="L0">1. SUPER ADMIN (FL & Global Settings)</option>
-              <option value="L1">2. NATIONAL USER (All India Command)</option>
-              <option value="L2">3. STATE USER (Jharkhand Directorate)</option>
-              <option value="L3">4. DISTRICT USER (Ranchi District Hub)</option>
-              <option value="L5">5. PHC USER (Ormanjhi Medical Officer)</option>
-              <option value="L5">6. PHC OPERATOR (Ground Inventory/Beds/Staff)</option>
+              <option value="L0">1. {t('tier.l0_title')}</option>
+              <option value="L1">2. {t('tier.l1_title')}</option>
+              <option value="L2">3. {t('tier.l2_title')}</option>
+              <option value="L3">4. {t('tier.l3_title')}</option>
+              <option value="L5">5. {t('tier.l5_title')}</option>
             </select>
           </div>
         </div>
@@ -421,11 +421,18 @@ export const DashboardScreen: React.FC = () => {
         {/* Dynamic Navigation for this user role ONLY */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
-            {tierMeta.title} Screens
+            {t(`tier.${activeTier.toLowerCase()}_name`, tierMeta.title)}
           </div>
 
           {navItems.map((item) => {
             const isActive = currentScreen === item.key;
+            const itemLabel =
+              language === 'hi' && item.labelHi
+                ? item.labelHi
+                : language === 'bn' && item.labelBn
+                ? item.labelBn
+                : t(`nav.${item.key || item.id}`, item.label);
+
             return (
               <button
                 key={item.key}
@@ -444,7 +451,7 @@ export const DashboardScreen: React.FC = () => {
                   <span className={isActive ? 'text-teal-400' : 'text-slate-400'}>
                     {renderNavIcon(item.icon)}
                   </span>
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate">{itemLabel}</span>
                 </div>
                 {item.badge && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
@@ -457,7 +464,7 @@ export const DashboardScreen: React.FC = () => {
 
           {/* Common Screens Divider */}
           <div className="pt-4 mt-4 border-t border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
-            Account & Utilities
+            {t('nav.account_utilities')}
           </div>
 
           {/* Notifications */}
@@ -475,7 +482,7 @@ export const DashboardScreen: React.FC = () => {
           >
             <div className="flex items-center gap-2.5">
               <Bell className="w-4 h-4 text-slate-400" />
-              <span>Alerts & Notifications</span>
+              <span>{t('nav.notifications')}</span>
             </div>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-red-950 text-red-300 border border-red-800 font-mono font-bold">
               {(alerts || []).filter((a) => !a.isRead).length}
@@ -496,7 +503,7 @@ export const DashboardScreen: React.FC = () => {
             }`}
           >
             <User className="w-4 h-4 text-slate-400" />
-            <span>Profile & Settings</span>
+            <span>{t('nav.profile')}</span>
           </button>
         </nav>
 
@@ -505,16 +512,19 @@ export const DashboardScreen: React.FC = () => {
           <div className="flex items-center justify-between px-2 text-xs text-slate-400">
             <span className="flex items-center gap-1 text-[11px]">
               <Globe2 className="w-3.5 h-3.5 text-teal-400" />
-              Language:
+              {t('language.select')}:
             </span>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="px-2 py-1 bg-slate-900 border border-slate-800 rounded text-xs text-slate-300 focus:outline-none focus:border-teal-500"
+              aria-label={t('language.select')}
+              className="px-2 py-1 bg-slate-900 border border-slate-800 rounded text-xs text-slate-200 focus:outline-none focus:border-teal-500 cursor-pointer"
             >
-              <option value="English">English</option>
-              <option value="हिंदी">हिंदी</option>
-              <option value="বাংলা">বাংলা</option>
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.nativeName}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -524,7 +534,7 @@ export const DashboardScreen: React.FC = () => {
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 border border-rose-800/40 text-xs font-medium transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Logout Session</span>
+            <span>{t('app.logout_session')}</span>
           </button>
         </div>
       </aside>

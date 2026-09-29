@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Sparkles, CheckCircle2, Clock, Package, AlertCircle } from 'lucide-react';
-import { InventoryItem, IndentRequest } from '../../../types';
+import { InventoryItem, IndentRequest, DrugResponse } from '../../../types';
 import { INITIAL_INDENTS } from '../../../data/mockAppData';
+import { healthChainApi } from '../../../services/healthChainApi';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface StockRequestIndentProps {
   inventory: InventoryItem[];
 }
 
 export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventory = [] }) => {
+  const { t } = useLanguage();
   const safeInventory = inventory || [];
   const [indents, setIndents] = useState<IndentRequest[]>(
     (INITIAL_INDENTS || []).filter((i) => (i.phcName || '').includes('Ormanjhi'))
   );
+  const [masterDrugs, setMasterDrugs] = useState<DrugResponse[]>([]);
   const firstCode = safeInventory[0]?.code || safeInventory[0]?.drugCode || 'MED-PCM-500';
   const [selectedDrug, setSelectedDrug] = useState(firstCode);
   const [requestedQty, setRequestedQty] = useState(1200);
@@ -19,8 +23,25 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
   const [notes, setNotes] = useState('');
   const [submittedMsg, setSubmittedMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function loadMasterDrugs() {
+      try {
+        const data = await healthChainApi.getDrugs();
+        if (data && data.length > 0) {
+          setMasterDrugs(data);
+          if (!selectedDrug || selectedDrug === 'MED-PCM-500') {
+            setSelectedDrug(data[0].name);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load master drugs for indent:', err);
+      }
+    }
+    loadMasterDrugs();
+  }, []);
+
   const currentDrug =
-    safeInventory.find((i) => (i.code || i.drugCode) === selectedDrug) || safeInventory[0];
+    safeInventory.find((i) => (i.code || i.drugCode) === selectedDrug || i.name === selectedDrug) || safeInventory[0];
   const recommendedQty = Math.max(
     500,
     (currentDrug?.minRequired || 50) * 3 - (currentDrug?.currentStock || 0)
@@ -28,6 +49,10 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const matchedMaster = masterDrugs.find((d) => d.name === selectedDrug || d.id === selectedDrug);
+    const drugName = matchedMaster ? matchedMaster.name : currentDrug?.name || selectedDrug;
+    const drugCode = matchedMaster ? matchedMaster.id.substring(0, 8).toUpperCase() : selectedDrug;
+
     const newIndent: IndentRequest = {
       id: `ind-${Date.now()}`,
       indentNumber: `IND-RAN-ORI-2026-${Math.floor(100 + Math.random() * 900)}`,
@@ -35,8 +60,8 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
       phcName: 'Ormanjhi PHC',
       districtId: 'dist-ran-01',
       districtName: 'Ranchi District',
-      drugName: currentDrug?.name || 'Essential Drug',
-      drugCode: selectedDrug,
+      drugName,
+      drugCode,
       requestedQty: Number(requestedQty),
       recommendedQty,
       urgency,
@@ -56,10 +81,10 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
         <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <Send className="w-5 h-5 text-teal-400" />
-          PHC Stock Requisition & Indent Filing
+          {t('indent.title')}
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Submit electronic indent requisitions to Ranchi District Health Officer. The system automatically computes federated demand recommendations based on historical consumption.
+          {t('indent.subtitle')}
         </p>
       </div>
 
@@ -72,11 +97,11 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
 
       {/* New Indent Form */}
       <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-base font-bold text-slate-200">File New Stock Requisition</h2>
+        <h2 className="text-base font-bold text-slate-200">{t('indent.file_new')}</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Select Medicine / Vaccine</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">{t('indent.select_drug')}</label>
             <select
               value={selectedDrug}
               onChange={(e) => setSelectedDrug(e.target.value)}
@@ -94,15 +119,15 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Requisition Urgency Tier</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">{t('indent.urgency')}</label>
             <select
               value={urgency}
               onChange={(e) => setUrgency(e.target.value as any)}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-500"
             >
-              <option value="ROUTINE">Routine Monthly Restock</option>
-              <option value="URGENT">Urgent (Buffer Depleted)</option>
-              <option value="EMERGENCY">Emergency (Zero Stock / Stock-out)</option>
+              <option value="ROUTINE">{t('indent.routine')}</option>
+              <option value="URGENT">{t('indent.urgent')}</option>
+              <option value="EMERGENCY">{t('indent.emergency')}</option>
             </select>
           </div>
         </div>
@@ -111,7 +136,7 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
         <div className="p-4 bg-slate-950 rounded-lg border border-teal-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-teal-400 font-semibold">
             <Sparkles className="w-4 h-4 text-teal-400" />
-            AI Recommended 30-Day Buffer:
+            {t('indent.rec_qty')}:
             <span className="text-slate-100 font-bold text-sm">{recommendedQty} {currentDrug?.unit}</span>
           </div>
           <button
@@ -125,7 +150,7 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Requested Quantity ({currentDrug?.unit})</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">{t('indent.req_qty')} ({currentDrug?.unit})</label>
             <input
               type="number"
               required
@@ -136,7 +161,7 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Clinical Justification / Note</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">{t('indent.notes')}</label>
             <input
               type="text"
               placeholder="e.g. Surge in monsoon fever cases at OPD"
@@ -153,7 +178,7 @@ export const StockRequestIndent: React.FC<StockRequestIndentProps> = ({ inventor
             className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
           >
             <Send className="w-4 h-4" />
-            Submit Indent to District Office
+            {t('indent.submit_btn')}
           </button>
         </div>
       </form>

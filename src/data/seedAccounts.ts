@@ -71,7 +71,7 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
     ],
   },
   {
-    email: 'phc.approver.ori_phc@hsc.gov.in',
+    email: 'phc.approver.orm_phc@hsc.gov.in',
     name: 'Ormanjhi PHC Medical Officer',
     role: 'PHC Approver',
     tier: 'L5',
@@ -89,7 +89,7 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
     ],
   },
   {
-    email: 'phc.operator.ori_phc@hsc.gov.in',
+    email: 'phc.operator.orm_phc@hsc.gov.in',
     name: 'Ormanjhi PHC Operator',
     role: 'PHC Operator',
     tier: 'L5',

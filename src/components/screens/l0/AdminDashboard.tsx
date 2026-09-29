@@ -50,11 +50,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             </button>
             <button
               type="button"
-              onClick={() => onNavigate('audit_logs')}
+              onClick={() => onNavigate('node_management')}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-2 transition-colors"
             >
-              <ShieldCheck className="w-4 h-4 text-purple-400" />
-              Audit Trail
+              <Server className="w-4 h-4 text-purple-400" />
+              Node Registry
             </button>
           </div>
         </div>

@@ -8,6 +8,8 @@ export interface RoleInfo {
   description?: string;
 }
 
+export type ScopeLevelEnum = 'platform' | 'national' | 'state' | 'district' | 'phc';
+
 export interface UserResponse {
   id: string;
   email: string;
@@ -19,7 +21,8 @@ export interface UserResponse {
   permissions: string[];
   created_at: string;
   updated_at: string;
-  phone?: string;
+  phone?: string | null;
+  must_change_password?: boolean;
   language?: string;
 }
 
@@ -32,8 +35,266 @@ export interface UserProfileResponse {
   scope_id: string | null;
   roles: string[];
   permissions: string[];
-  phone?: string;
+  phone?: string | null;
+  must_change_password?: boolean;
   language?: string;
+}
+
+export interface UserCreateRequest {
+  email: string;
+  full_name: string;
+  password: string;
+  phone?: string | null;
+  is_active?: boolean;
+  scope_level: ScopeLevelEnum;
+  scope_id?: string | null;
+  role_names: string[];
+}
+
+export interface UserUpdateRequest {
+  email?: string | null;
+  full_name?: string | null;
+  phone?: string | null;
+  scope_level?: ScopeLevelEnum | null;
+  scope_id?: string | null;
+  role_names?: string[] | null;
+}
+
+export interface UserListResponse {
+  items: UserResponse[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+  };
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  new_password?: string;
+}
+
+// ---------------- Backend Inventory API Types ----------------
+export type DrugCategoryEnum = 'antibiotic' | 'analgesic' | 'antimalarial' | 'vaccine' | 'ors' | 'other';
+export type DrugUnitEnum = 'tablet' | 'capsule' | 'ml' | 'vial' | 'sachet' | 'tube';
+export type BatchStatusEnum = 'active' | 'expired' | 'quarantined' | 'depleted';
+export type WriteOffReasonEnum = 'expired' | 'damaged' | 'contaminated' | 'recalled' | 'other';
+export type TransactionTypeEnum = 'receive' | 'dispense' | 'write_off' | 'transfer_in' | 'transfer_out' | 'adjustment';
+
+export interface DrugResponse {
+  id: string;
+  name: string;
+  category: DrugCategoryEnum;
+  unit: DrugUnitEnum;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DrugCreateRequest {
+  name: string;
+  category: DrugCategoryEnum;
+  unit: DrugUnitEnum;
+}
+
+export interface InventoryBatchResponse {
+  id: string;
+  facility_id: string;
+  drug_id: string;
+  drug_name?: string;
+  batch_number: string;
+  quantity: number;
+  expiry_date: string;
+  received_at?: string;
+  status: BatchStatusEnum;
+  created_at: string;
+  updated_at: string;
+  days_until_expiry?: number;
+}
+
+export interface StockReceiveRequest {
+  drug_id: string;
+  batch_number: string;
+  quantity: number;
+  expiry_date: string;
+  received_at?: string | null;
+}
+
+export interface StockDispenseRequest {
+  drug_id: string;
+  quantity: number;
+  reason?: string | null;
+}
+
+export interface DispenseResponse {
+  message: string;
+  total_dispensed: number;
+  drug_id: string;
+  facility_id: string;
+  remaining_stock: number;
+  batches_affected?: Array<{
+    batch_id: string;
+    batch_number: string;
+    deducted: number;
+    remaining: number;
+    status: string;
+  }>;
+}
+
+export interface StockWriteOffRequest {
+  batch_id: string;
+  quantity: number;
+  reason_category: WriteOffReasonEnum;
+  reason: string;
+}
+
+export interface StockTransactionResponse {
+  id: string;
+  facility_id: string;
+  drug_id: string;
+  batch_id?: string | null;
+  transaction_type: TransactionTypeEnum;
+  quantity: number;
+  balance_after: number;
+  reference_id?: string | null;
+  reason?: string | null;
+  recorded_by: string;
+  created_at: string;
+  drug_name?: string;
+}
+
+export interface InventoryMyScopeItem {
+  facility_id: string;
+  facility_name: string;
+  facility_code: string;
+  district_id: string;
+  district_name: string;
+  total_batches: number;
+  total_quantity: number;
+  expiring_30d_count: number;
+}
+
+// ---------------- Backend Bed API Types ----------------
+export type BedTypeEnum = 'general' | 'icu' | 'oxygen' | 'maternity' | 'pediatric';
+
+export interface BedInventoryResponse {
+  id: string;
+  facility_id: string;
+  bed_type: BedTypeEnum;
+  total_beds: number;
+  occupied_beds: number;
+  available_beds: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BedSummaryResponse {
+  facility_id: string;
+  total_beds: number;
+  total_occupied: number;
+  total_available: number;
+  by_type: BedInventoryResponse[];
+}
+
+export interface BedCreateRequest {
+  bed_type: BedTypeEnum;
+  total_beds: number;
+}
+
+export interface BedUpdateRequest {
+  occupied_beds?: number | null;
+  total_beds?: number | null;
+}
+
+export interface BedOccupancyLogResponse {
+  id: string;
+  facility_id: string;
+  bed_type: BedTypeEnum;
+  previous_occupied: number;
+  new_occupied: number;
+  previous_total: number;
+  new_total: number;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+// ---------------- Backend Attendance API Types ----------------
+export type AttendanceStatusEnum = 'present' | 'absent' | 'leave' | 'half_day' | 'on_duty';
+
+export interface RosterItemResponse {
+  user_id: string;
+  full_name: string;
+  user_email: string;
+  status: AttendanceStatusEnum | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  remarks?: string | null;
+  attendance_id?: string | null;
+}
+
+export interface AttendanceMarkRequest {
+  user_id: string;
+  status: AttendanceStatusEnum;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  remarks?: string | null;
+  attendance_date: string;
+}
+
+export interface AttendanceBulkMarkRequest {
+  attendance_date: string;
+  entries: Array<{
+    user_id: string;
+    status: AttendanceStatusEnum;
+    check_in_time?: string | null;
+    check_out_time?: string | null;
+    remarks?: string | null;
+  }>;
+}
+
+export interface AttendanceCorrectionRequest {
+  status: AttendanceStatusEnum;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  remarks?: string | null;
+  reason: string;
+}
+
+export interface AttendanceResponse {
+  id: string;
+  facility_id: string;
+  user_id: string;
+  attendance_date: string;
+  status: AttendanceStatusEnum;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  remarks?: string | null;
+  recorded_by: string;
+  recorded_at: string;
+  last_modified_by?: string | null;
+  last_modified_at?: string | null;
+}
+
+export interface AttendanceSummaryResponse {
+  facility_id: string;
+  from_date: string;
+  to_date: string;
+  total_records: number;
+  present_count: number;
+  absent_count: number;
+  leave_count: number;
+  half_day_count: number;
+  on_duty_count: number;
+  attendance_rate: number;
+}
+
+export interface ApprovePhcRequestResponse {
+  status: string;
+  action: string;
+  user_id: string;
+  scope_level: string;
 }
 
 export type User = UserResponse | UserProfileResponse | {
@@ -92,7 +353,6 @@ export type L0ScreenKey =
   | 'user_management'
   | 'fl_orchestration'
   | 'node_management'
-  | 'audit_logs'
   | 'system_settings';
 
 export type L1ScreenKey =
@@ -138,6 +398,7 @@ export interface NavItem {
   key?: string;
   label: string;
   labelHi?: string;
+  labelBn?: string;
   icon: string;
   badge?: number | string;
   badgeColor?: string;

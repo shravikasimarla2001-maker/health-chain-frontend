@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserResponse, RoleTier } from '../../../types';
 import { getTierBadge } from '../../../utils/rbac';
+import { useLanguage } from '../../../context/LanguageContext';
 import { User, Phone, Globe, Shield, CheckCircle2, Key, Bell, Save } from 'lucide-react';
 
 interface ProfileScreenProps {
@@ -17,11 +18,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   user,
   tier = 'L5',
   onUpdateUser,
-  language,
-  onLanguageChange,
-  currentLanguage,
-  onUpdateLanguage,
 }) => {
+  const { language: activeLang, setLanguage: setGlobalLang, t } = useLanguage();
   const safeTier: RoleTier = (['L0', 'L1', 'L2', 'L3', 'L5'].includes(tier as string) ? tier : 'L5') as RoleTier;
   const badge = getTierBadge(safeTier) || {
     label: 'L5 — PHC User',
@@ -44,8 +42,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     updated_at: new Date().toISOString(),
   };
 
-  const activeLang = language || currentLanguage || 'en';
-  const handleLangSelect = onLanguageChange || onUpdateLanguage || (() => {});
+  const handleLangSelect = (code: string) => {
+    setGlobalLang(code);
+  };
 
   const [fullName, setFullName] = useState(activeUser.full_name || 'Health Officer');
   const [phone, setPhone] = useState(activeUser.phone || '+91 94311 88421');
@@ -77,17 +76,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badge?.bg || 'bg-teal-950/60'} ${badge?.text || 'text-teal-300'} ${badge?.border || 'border-teal-700/60'}`}
                 >
-                  {badge?.label || 'PHC Operator'}
+                  {t(`tier.${safeTier.toLowerCase()}_name`, badge?.label || 'PHC Operator')}
                 </span>
               </div>
               <p className="text-sm text-slate-400 mt-0.5">{activeUser.email}</p>
-              <p className="text-xs text-slate-500 mt-1">Scope: <span className="text-slate-300 font-mono uppercase">{activeUser.scope_level}</span> {activeUser.scope_id ? `(${activeUser.scope_id.slice(0, 8)}...)` : '(Global)'}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {t('table.scope', 'Scope')}: <span className="text-slate-300 font-mono uppercase">{activeUser.scope_level}</span> {activeUser.scope_id ? `(${activeUser.scope_id.slice(0, 8)}...)` : '(Global)'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/60 border border-emerald-800 text-emerald-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Active Session
+              {t('app.active_session')}
             </span>
           </div>
         </div>
@@ -96,48 +97,45 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {savedSuccess && (
         <div className="p-4 bg-emerald-950/80 border border-emerald-700/60 rounded-lg text-emerald-300 text-sm flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          Profile preferences updated successfully!
+          {t('action.save', 'Profile preferences updated successfully!')}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Main settings form */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 cols: Profile Form */}
-        <div className="md:col-span-2 space-y-6">
-          <form onSubmit={handleSave} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5" id="profile-edit-form">
-            <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
-              <User className="w-4 h-4 text-emerald-400" />
-              Personal Details & Contact
-            </h2>
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <h2 className="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <User className="w-4 h-4 text-emerald-400" />
+            {t('profile.personal_info')}
+          </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">{t('users.full_name', 'Full Name')}</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">{t('table.phone', 'Phone Number')}</label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
-                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Phone Number (SMS Alerts)</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
-                    placeholder="+91 94311 00000"
-                  />
-                </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Official Email Address</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1">{t('users.email', 'Official HSC Email')}</label>
               <input
                 type="email"
                 value={activeUser.email}
@@ -150,7 +148,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="pt-2 border-t border-slate-800">
               <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
                 <Globe className="w-4 h-4 text-cyan-400" />
-                Language & Localization
+                {t('profile.language_heading')}
               </h3>
               <div className="grid grid-cols-3 gap-3">
                 {[
@@ -164,7 +162,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onClick={() => handleLangSelect(l.code)}
                     className={`p-3 rounded-lg border text-left transition-all ${
                       activeLang === l.code
-                        ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300'
+                        ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300 shadow-sm'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
@@ -178,12 +176,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="pt-2 border-t border-slate-800">
               <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
                 <Bell className="w-4 h-4 text-amber-400" />
-                Alert Notification Channels
+                {t('profile.notifications_heading')}
               </h3>
               <div className="space-y-3">
                 <label className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
                   <div>
-                    <div className="text-sm text-slate-200">Critical Stock-Out Email Notifications</div>
+                    <div className="text-sm text-slate-200">{t('profile.critical_alerts')}</div>
                     <div className="text-xs text-slate-500">Receive instant alerts when facility stock breaches emergency levels</div>
                   </div>
                   <input
@@ -195,7 +193,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </label>
                 <label className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-lg cursor-pointer">
                   <div>
-                    <div className="text-sm text-slate-200">SMS & Cold Chain Excursion Alarms</div>
+                    <div className="text-sm text-slate-200">{t('profile.sms_alerts')}</div>
                     <div className="text-xs text-slate-500">Urgent SMS dispatch when ILR refrigerator rises above 8°C</div>
                   </div>
                   <input
@@ -215,7 +213,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
               >
                 <Save className="w-4 h-4" />
-                Save Changes
+                {t('action.save')}
               </button>
             </div>
           </form>
@@ -226,11 +224,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4" id="rbac-summary-card">
             <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
               <Shield className="w-4 h-4 text-purple-400" />
-              Role & Permissions
+              {t('profile.roles_permissions')}
             </h2>
 
             <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
-              <div className="text-xs text-slate-500">Assigned Primary Role</div>
+              <div className="text-xs text-slate-500">{t('table.role', 'Assigned Primary Role')}</div>
               <div className="text-sm font-semibold text-slate-200 mt-0.5">
                 {activeUser.roles && activeUser.roles.length > 0 ? (typeof activeUser.roles[0] === 'string' ? activeUser.roles[0] : activeUser.roles[0].name) : 'Medical Officer'}
               </div>
