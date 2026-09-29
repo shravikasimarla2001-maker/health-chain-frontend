@@ -12,7 +12,7 @@ import {
   Calendar,
 } from 'lucide-react';
 
-import { ALL_PHCS } from '../../data/geoConstants';
+import { ALL_PHCS } from '../../../data/geoConstants';
 
 interface PhcOverview {
   id: string;

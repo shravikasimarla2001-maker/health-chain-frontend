@@ -66,7 +66,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.user_management': 'User Management',
     'nav.fl_orchestration': 'FL Orchestration',
     'nav.node_management': 'Node Management',
-    'nav.system_settings': 'System Settings',
+    'nav.system_settings': 'Medicine Stock',
     'nav.national_dashboard': 'National Dashboard',
     'nav.cross_state_redistribution': 'Inter-State Transfers',
     'nav.national_alerts': 'National Alerts',

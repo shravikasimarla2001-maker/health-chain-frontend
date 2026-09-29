@@ -381,7 +381,7 @@ export type L3ScreenKey =
 
 export type L5ScreenKey =
   | 'phc_dashboard'
-  | 'inventory_management'
+  | 'inventory_stock' 
   | 'bed_management'
   | 'staff_attendance'
   | 'stock_request'
@@ -510,3 +510,162 @@ export interface FlRound {
   completedTime?: string;
   convergenceProgress: number;
 }
+
+// ---------------- Truck / Fleet Onboarding Types (Additions) ----------------
+
+export type TruckStatusEnum = 'available' | 'in_transit' | 'maintenance' | 'inactive';
+
+export interface Truck {
+  id: string;
+  truck_number: string;
+  driver_name: string;
+  driver_phone: string;
+  capacity: number;
+  status: TruckStatusEnum;
+  current_location?: string;
+  assigned_facility_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TruckCreate {
+  truck_number: string;
+  driver_name: string;
+  driver_phone: string;
+  capacity: number;
+  status?: TruckStatusEnum;
+  current_location?: string;
+  assigned_facility_id?: string | null;
+}
+
+export interface TruckUpdate {
+  truck_number?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  capacity?: number;
+  status?: TruckStatusEnum;
+  current_location?: string;
+  assigned_facility_id?: string | null;
+}
+
+export interface TruckListResponse {
+  items: Truck[];
+  pagination: PaginationMeta;
+}
+
+// ---------------- Pagination Meta (Extracted) ----------------
+
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}
+
+// ---------------- DrugCreate alias (matches component import) ----------------
+
+// The component imports `DrugCreate`, but the file already exports `DrugCreateRequest`.
+// This alias keeps backward-compatibility without renaming the existing type.
+export type DrugCreate = DrugCreateRequest;
+
+// ---------------- Additional Inventory Scope Response Wrappers ----------------
+
+export interface InventoryMyScopeAggregate {
+  total_facilities: number;
+  total_batches: number;
+  total_quantity: number;
+  total_expiring_30d: number;
+}
+
+export interface InventoryMyScopeResponse {
+  scope_level: string;
+  scope_name: string;
+  items: InventoryMyScopeItem[];
+  aggregate: InventoryMyScopeAggregate;
+  pagination: PaginationMeta;
+}
+
+export interface StockTransactionListResponse {
+  items: StockTransactionResponse[];
+  pagination: PaginationMeta;
+}
+
+// ---------------- Bed Scope Response Wrappers ----------------
+
+export interface BedMyScopeItem {
+  facility_id: string;
+  facility_name: string;
+  facility_code: string;
+  district_id: string;
+  district_name: string;
+  total_beds: number;
+  occupied_beds: number;
+  available_beds: number;
+  occupancy_rate: number;
+}
+
+export interface BedMyScopeAggregate {
+  total_facilities: number;
+  total_beds: number;
+  total_occupied: number;
+  total_available: number;
+  overall_occupancy_rate: number;
+}
+
+export interface BedMyScopeResponse {
+  scope_level: string;
+  scope_name: string;
+  items: BedMyScopeItem[];
+  aggregate: BedMyScopeAggregate;
+  pagination: PaginationMeta;
+}
+
+export interface BedHistoryListResponse {
+  items: BedOccupancyLogResponse[];
+  pagination: PaginationMeta;
+}
+
+// ---------------- Attendance Scope Response Wrappers ----------------
+
+export interface AttendanceMyScopeItem {
+  facility_id: string;
+  facility_name: string;
+  facility_code: string;
+  district_id: string;
+  district_name: string;
+  total_staff: number;
+  present_count: number;
+  absent_count: number;
+  leave_count: number;
+  half_day_count: number;
+  on_duty_count: number;
+  marked_count: number;
+  attendance_rate: number;
+}
+
+export interface AttendanceMyScopeAggregate {
+  total_facilities: number;
+  total_staff: number;
+  total_present: number;
+  total_absent: number;
+  total_leave: number;
+  total_half_day: number;
+  total_on_duty: number;
+  total_marked: number;
+  overall_attendance_rate: number;
+}
+
+export interface AttendanceMyScopeResponse {
+  scope_level: string;
+  scope_name: string;
+  items: AttendanceMyScopeItem[];
+  aggregate: AttendanceMyScopeAggregate;
+  pagination: PaginationMeta;
+}
+
+export interface AttendanceHistoryListResponse {
+  items: AttendanceResponse[];
+  pagination: PaginationMeta;
+}
+
+

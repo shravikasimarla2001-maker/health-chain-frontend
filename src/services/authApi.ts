@@ -5,6 +5,45 @@ import {
   LogoutResponse,
   HealthResponse,
   ApiLogEntry,
+  UserListResponse,
+  UserResponse,
+  UserCreate,
+  UserUpdate,
+  ResetPasswordResponse,
+  RoleResponse,
+  DrugResponse,
+  DrugCreate,
+  DrugCategoryEnum,
+  DrugUnitEnum,
+  InventoryBatchResponse,
+  InventoryMyScopeResponse,
+  StockReceiveRequest,
+  StockDispenseRequest,
+  StockWriteOffRequest,
+  DispenseResponse,
+  StockTransactionListResponse,
+  TransactionTypeEnum,
+  BatchStatusEnum,
+  BedInventoryResponse,
+  BedCreate,
+  BedUpdate,
+  BedMyScopeResponse,
+  BedSummaryResponse,
+  BedHistoryListResponse,
+  BedTypeEnum,
+  AttendanceResponse,
+  AttendanceMarkRequest,
+  AttendanceBulkMarkRequest,
+  AttendanceCorrectionRequest,
+  AttendanceMyScopeResponse,
+  RosterItemResponse,
+  AttendanceHistoryListResponse,
+  AttendanceSummaryResponse,
+  AttendanceStatusEnum,
+  Truck,
+  TruckCreate,
+  TruckUpdate,
+  TruckListResponse,
 } from '../types';
 import { DEFAULT_BACKEND_URL, SEED_ACCOUNTS, DEFAULT_PASSWORD } from '../data/seedAccounts';
 
@@ -140,6 +179,8 @@ export class AuthApiService {
     return parsedBody as T;
   }
 
+  // ===================== AUTH ENDPOINTS =====================
+
   // 1. Health check
   public async checkHealth(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/health', { method: 'GET' });
@@ -164,7 +205,42 @@ export class AuthApiService {
     });
   }
 
-  // 4. Token Refresh
+  // 4. Update own profile
+  public async updateMe(
+    accessToken: string,
+    data: { full_name?: string; phone?: string }
+  ): Promise<UserProfileResponse> {
+    return this.request<UserProfileResponse>(
+      '/auth/me',
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 5. Change own password
+  public async changeMyPassword(
+    accessToken: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<void> {
+    return this.request<void>(
+      '/auth/me/change-password',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      { current_password: currentPassword, new_password: newPassword }
+    );
+  }
+
+  // 6. Token Refresh
   public async refreshToken(refreshToken: string): Promise<RefreshResponse> {
     return this.request<RefreshResponse>(
       '/auth/refresh',
@@ -173,7 +249,7 @@ export class AuthApiService {
     );
   }
 
-  // 5. Logout
+  // 7. Logout
   public async logout(refreshToken: string): Promise<LogoutResponse> {
     return this.request<LogoutResponse>(
       '/auth/logout',
@@ -182,7 +258,7 @@ export class AuthApiService {
     );
   }
 
-  // 6. Test PHC Approval (RBAC test)
+  // 8. Test PHC Approval (RBAC test)
   public async testApprovePhcRequest(accessToken: string): Promise<{ status: string; action: string; user_id: string; scope_level: string }> {
     return this.request('/auth/test/approve-phc-request', {
       method: 'POST',
@@ -192,7 +268,7 @@ export class AuthApiService {
     });
   }
 
-  // 7. Test District Data (Multi-tenant geographic isolation test)
+  // 9. Test District Data (Multi-tenant geographic isolation test)
   public async testDistrictData(accessToken: string, districtId: string): Promise<{ status: string; district_id: string; access: string; bypassed?: boolean }> {
     return this.request(`/auth/test/district-data/${districtId}`, {
       method: 'GET',
@@ -202,8 +278,749 @@ export class AuthApiService {
     });
   }
 
+  // ===================== USER MANAGEMENT ENDPOINTS =====================
+
+  // 10. List users
+  public async listUsers(
+    accessToken: string,
+    params?: {
+      scope_level?: string;
+      role?: string;
+      is_active?: boolean;
+      search?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<UserListResponse> {
+    const query = new URLSearchParams();
+    if (params?.scope_level) query.append('scope_level', params.scope_level);
+    if (params?.role) query.append('role', params.role);
+    if (params?.is_active !== undefined) query.append('is_active', String(params.is_active));
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+
+    const queryString = query.toString();
+    return this.request<UserListResponse>(
+      `/users${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 11. Create user
+  public async createUser(accessToken: string, data: UserCreate): Promise<UserResponse> {
+    return this.request<UserResponse>(
+      '/users',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 12. Get user by ID
+  public async getUser(accessToken: string, userId: string): Promise<UserResponse> {
+    return this.request<UserResponse>(`/users/${userId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 13. Update user
+  public async updateUser(
+    accessToken: string,
+    userId: string,
+    data: UserUpdate
+  ): Promise<UserResponse> {
+    return this.request<UserResponse>(
+      `/users/${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 14. Deactivate user
+  public async deactivateUser(accessToken: string, userId: string): Promise<UserResponse> {
+    return this.request<UserResponse>(`/users/${userId}/deactivate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 15. Activate user
+  public async activateUser(accessToken: string, userId: string): Promise<UserResponse> {
+    return this.request<UserResponse>(`/users/${userId}/activate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 16. Reset user password
+  public async resetUserPassword(
+    accessToken: string,
+    userId: string
+  ): Promise<ResetPasswordResponse> {
+    return this.request<ResetPasswordResponse>(
+      `/users/${userId}/reset-password`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 17. Get user roles
+  public async getUserRoles(accessToken: string, userId: string): Promise<RoleResponse[]> {
+    return this.request<RoleResponse[]>(`/users/${userId}/roles`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 18. Get user permissions
+  public async getUserPermissions(accessToken: string, userId: string): Promise<string[]> {
+    return this.request<string[]>(`/users/${userId}/permissions`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // ===================== INVENTORY ENDPOINTS =====================
+
+  // 19. List all drugs
+  public async listDrugs(
+    accessToken: string,
+    params?: {
+      category?: DrugCategoryEnum;
+      unit?: DrugUnitEnum;
+      is_active?: boolean;
+      search?: string;
+    }
+  ): Promise<DrugResponse[]> {
+    const query = new URLSearchParams();
+    if (params?.category) query.append('category', params.category);
+    if (params?.unit) query.append('unit', params.unit);
+    if (params?.is_active !== undefined) query.append('is_active', String(params.is_active));
+    if (params?.search) query.append('search', params.search);
+
+    const queryString = query.toString();
+    return this.request<DrugResponse[]>(
+      `/inventory/drugs${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 20. Create drug
+  public async createDrug(accessToken: string, data: DrugCreate): Promise<DrugResponse> {
+    return this.request<DrugResponse>(
+      '/inventory/drugs',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 21. Get inventory summary across scope
+  public async getInventoryMyScope(
+    accessToken: string,
+    params?: {
+      page?: number;
+      page_size?: number;
+      district_id?: string;
+      drug_id?: string;
+      search?: string;
+    }
+  ): Promise<InventoryMyScopeResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    if (params?.district_id) query.append('district_id', params.district_id);
+    if (params?.drug_id) query.append('drug_id', params.drug_id);
+    if (params?.search) query.append('search', params.search);
+
+    const queryString = query.toString();
+    return this.request<InventoryMyScopeResponse>(
+      `/inventory/my-scope${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 22. List facility stock batches
+  public async listFacilityStock(
+    accessToken: string,
+    facilityId: string,
+    params?: {
+      drug_id?: string;
+      status?: BatchStatusEnum;
+      search?: string;
+    }
+  ): Promise<InventoryBatchResponse[]> {
+    const query = new URLSearchParams();
+    if (params?.drug_id) query.append('drug_id', params.drug_id);
+    if (params?.status) query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+
+    const queryString = query.toString();
+    return this.request<InventoryBatchResponse[]>(
+      `/inventory/facility/${facilityId}${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 23. Receive stock
+  public async receiveStock(
+    accessToken: string,
+    facilityId: string,
+    data: StockReceiveRequest
+  ): Promise<InventoryBatchResponse> {
+    return this.request<InventoryBatchResponse>(
+      `/inventory/facility/${facilityId}/receive`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 24. Dispense stock
+  public async dispenseStock(
+    accessToken: string,
+    facilityId: string,
+    data: StockDispenseRequest
+  ): Promise<DispenseResponse> {
+    return this.request<DispenseResponse>(
+      `/inventory/facility/${facilityId}/dispense`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 25. Write off stock
+  public async writeOffStock(
+    accessToken: string,
+    facilityId: string,
+    data: StockWriteOffRequest
+  ): Promise<InventoryBatchResponse> {
+    return this.request<InventoryBatchResponse>(
+      `/inventory/facility/${facilityId}/write-off`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 26. Get expiring stock
+  public async getExpiringStock(
+    accessToken: string,
+    facilityId: string,
+    days: number = 30
+  ): Promise<InventoryBatchResponse[]> {
+    return this.request<InventoryBatchResponse[]>(
+      `/inventory/facility/${facilityId}/expiring?days=${days}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 27. List stock transactions
+  public async listStockTransactions(
+    accessToken: string,
+    facilityId: string,
+    params?: {
+      drug_id?: string;
+      transaction_type?: TransactionTypeEnum;
+      from_date?: string;
+      to_date?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<StockTransactionListResponse> {
+    const query = new URLSearchParams();
+    if (params?.drug_id) query.append('drug_id', params.drug_id);
+    if (params?.transaction_type) query.append('transaction_type', params.transaction_type);
+    if (params?.from_date) query.append('from_date', params.from_date);
+    if (params?.to_date) query.append('to_date', params.to_date);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+
+    const queryString = query.toString();
+    return this.request<StockTransactionListResponse>(
+      `/inventory/facility/${facilityId}/transactions${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // ===================== BEDS ENDPOINTS =====================
+
+  // 28. Get beds summary across scope
+  public async getBedsMyScope(
+    accessToken: string,
+    params?: {
+      page?: number;
+      page_size?: number;
+      district_id?: string;
+      search?: string;
+    }
+  ): Promise<BedMyScopeResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    if (params?.district_id) query.append('district_id', params.district_id);
+    if (params?.search) query.append('search', params.search);
+
+    const queryString = query.toString();
+    return this.request<BedMyScopeResponse>(
+      `/beds/my-scope${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 29. List facility beds
+  public async listFacilityBeds(
+    accessToken: string,
+    facilityId: string
+  ): Promise<BedInventoryResponse[]> {
+    return this.request<BedInventoryResponse[]>(`/beds/facility/${facilityId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 30. Add bed type
+  public async addBedType(
+    accessToken: string,
+    facilityId: string,
+    data: BedCreate
+  ): Promise<BedInventoryResponse> {
+    return this.request<BedInventoryResponse>(
+      `/beds/facility/${facilityId}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 31. Get facility bed summary
+  public async getFacilityBedSummary(
+    accessToken: string,
+    facilityId: string
+  ): Promise<BedSummaryResponse> {
+    return this.request<BedSummaryResponse>(
+      `/beds/facility/${facilityId}/summary`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 32. Update bed
+  public async updateBed(
+    accessToken: string,
+    facilityId: string,
+    bedType: BedTypeEnum,
+    data: BedUpdate
+  ): Promise<BedInventoryResponse> {
+    return this.request<BedInventoryResponse>(
+      `/beds/facility/${facilityId}/${bedType}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 33. Deactivate bed type
+  public async deactivateBed(
+    accessToken: string,
+    facilityId: string,
+    bedType: BedTypeEnum
+  ): Promise<BedInventoryResponse> {
+    return this.request<BedInventoryResponse>(
+      `/beds/facility/${facilityId}/${bedType}/deactivate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 34. Activate bed type
+  public async activateBed(
+    accessToken: string,
+    facilityId: string,
+    bedType: BedTypeEnum
+  ): Promise<BedInventoryResponse> {
+    return this.request<BedInventoryResponse>(
+      `/beds/facility/${facilityId}/${bedType}/activate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 35. Get bed history
+  public async getBedHistory(
+    accessToken: string,
+    facilityId: string,
+    params?: {
+      bed_type?: BedTypeEnum;
+      from_date?: string;
+      to_date?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<BedHistoryListResponse> {
+    const query = new URLSearchParams();
+    if (params?.bed_type) query.append('bed_type', params.bed_type);
+    if (params?.from_date) query.append('from_date', params.from_date);
+    if (params?.to_date) query.append('to_date', params.to_date);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+
+    const queryString = query.toString();
+    return this.request<BedHistoryListResponse>(
+      `/beds/facility/${facilityId}/history${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // ===================== ATTENDANCE ENDPOINTS =====================
+
+  // 36. Get attendance summary across scope
+  public async getAttendanceMyScope(
+    accessToken: string,
+    params?: {
+      page?: number;
+      page_size?: number;
+      district_id?: string;
+      date?: string;
+      search?: string;
+    }
+  ): Promise<AttendanceMyScopeResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    if (params?.district_id) query.append('district_id', params.district_id);
+    if (params?.date) query.append('date', params.date);
+    if (params?.search) query.append('search', params.search);
+
+    const queryString = query.toString();
+    return this.request<AttendanceMyScopeResponse>(
+      `/attendance/my-scope${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 37. Get facility roster
+  public async getFacilityRoster(
+    accessToken: string,
+    facilityId: string,
+    date?: string
+  ): Promise<RosterItemResponse[]> {
+    const query = new URLSearchParams();
+    if (date) query.append('date', date);
+
+    const queryString = query.toString();
+    return this.request<RosterItemResponse[]>(
+      `/attendance/facility/${facilityId}/roster${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 38. Mark single attendance
+  public async markAttendance(
+    accessToken: string,
+    facilityId: string,
+    data: AttendanceMarkRequest
+  ): Promise<AttendanceResponse> {
+    return this.request<AttendanceResponse>(
+      `/attendance/facility/${facilityId}/mark`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 39. Bulk mark attendance
+  public async bulkMarkAttendance(
+    accessToken: string,
+    facilityId: string,
+    data: AttendanceBulkMarkRequest
+  ): Promise<AttendanceResponse[]> {
+    return this.request<AttendanceResponse[]>(
+      `/attendance/facility/${facilityId}/bulk-mark`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 40. Correct attendance
+  public async correctAttendance(
+    accessToken: string,
+    facilityId: string,
+    attendanceId: string,
+    data: AttendanceCorrectionRequest
+  ): Promise<AttendanceResponse> {
+    return this.request<AttendanceResponse>(
+      `/attendance/facility/${facilityId}/${attendanceId}/correct`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 41. Get attendance history
+  public async getAttendanceHistory(
+    accessToken: string,
+    facilityId: string,
+    params?: {
+      user_id?: string;
+      status?: AttendanceStatusEnum;
+      from_date?: string;
+      to_date?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<AttendanceHistoryListResponse> {
+    const query = new URLSearchParams();
+    if (params?.user_id) query.append('user_id', params.user_id);
+    if (params?.status) query.append('status', params.status);
+    if (params?.from_date) query.append('from_date', params.from_date);
+    if (params?.to_date) query.append('to_date', params.to_date);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+
+    const queryString = query.toString();
+    return this.request<AttendanceHistoryListResponse>(
+      `/attendance/facility/${facilityId}/history${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 42. Get attendance summary
+  public async getAttendanceSummary(
+    accessToken: string,
+    facilityId: string,
+    fromDate: string,
+    toDate: string
+  ): Promise<AttendanceSummaryResponse> {
+    return this.request<AttendanceSummaryResponse>(
+      `/attendance/facility/${facilityId}/summary?from_date=${fromDate}&to_date=${toDate}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // ===================== TRUCK ENDPOINTS (New) =====================
+
+  // 43. List all trucks
+  public async listTrucks(
+    accessToken: string,
+    params?: {
+      status?: string;
+      search?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ): Promise<TruckListResponse> {
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+
+    const queryString = query.toString();
+    // Note: This endpoint doesn't exist in the Swagger doc, but we'll add it
+    // In a real scenario, you'd need to add this to your backend
+    return this.request<TruckListResponse>(
+      `/trucks${queryString ? `?${queryString}` : ''}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 44. Create a new truck
+  public async createTruck(accessToken: string, data: TruckCreate): Promise<Truck> {
+    return this.request<Truck>(
+      '/trucks',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 45. Get truck by ID
+  public async getTruck(accessToken: string, truckId: string): Promise<Truck> {
+    return this.request<Truck>(`/trucks/${truckId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
+  // 46. Update truck
+  public async updateTruck(
+    accessToken: string,
+    truckId: string,
+    data: TruckUpdate
+  ): Promise<Truck> {
+    return this.request<Truck>(
+      `/trucks/${truckId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      data
+    );
+  }
+
+  // 47. Delete truck
+  public async deleteTruck(accessToken: string, truckId: string): Promise<void> {
+    return this.request<void>(`/trucks/${truckId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
+
   // ===================== MOCK FALLBACK HANDLER =====================
-  // Allows testing when the ephemeral tunnel is offline or in development
+
   public mockLogin(email: string, password: string): LoginResponse {
     const account = SEED_ACCOUNTS.find(
       (a) => a.email.toLowerCase() === email.toLowerCase().trim()
@@ -270,6 +1087,7 @@ export class AuthApiService {
         is_active: true,
         scope_level: matchedAccount.scope,
         scope_id: matchedAccount.scope === 'PLATFORM' ? null : 'd58e3e4a-921c-43f1-a185-123456789abc',
+        must_change_password: false,
         roles: [
           {
             id: 'role-1',

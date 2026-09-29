@@ -48,7 +48,7 @@ import { AdminDashboard } from './screens/l0/AdminDashboard';
 import { UserManagement } from './screens/l0/UserManagement';
 import { FlOrchestration } from './screens/l0/FlOrchestration';
 import { NodeManagement } from './screens/l0/NodeManagement';
-import { SystemSettings } from './screens/l0/SystemSettings';
+import { MedicineStock } from './screens/l0/MedicineStock';
 
 // L1 Screens
 import { NationalDashboard } from './screens/l1/NationalDashboard';
@@ -217,7 +217,7 @@ export const DashboardScreen: React.FC = () => {
         case 'node_management':
           return <NodeManagement />;
         case 'system_settings':
-          return <SystemSettings />;
+          return <MedicineStock  />;
         default:
           return <AdminDashboard onNavigate={(screen) => setCurrentScreen(screen)} />;
       }

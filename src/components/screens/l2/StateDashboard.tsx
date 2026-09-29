@@ -12,7 +12,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-import { ALL_DISTRICTS } from '../../data/geoConstants';
+import { ALL_DISTRICTS } from '../../../data/geoConstants';
 
 interface DistrictMetric {
   code: string;
@@ -118,14 +118,14 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <button
+            {/*<button
               type="button"
               onClick={() => onNavigate('state_redistribution')}
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
             >
               <ArrowLeftRight className="w-4 h-4" />
               Intra-State Transfers
-            </button>
+            </button>*/}
             <button
               type="button"
               onClick={() => onNavigate('state_alerts')}

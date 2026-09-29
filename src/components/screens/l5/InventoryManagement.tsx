@@ -293,7 +293,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             {t('action.refresh')}
           </button>
-          <button
+          {/*<button
             type="button"
             onClick={handleSimulateScan}
             disabled={scanning}
@@ -301,7 +301,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           >
             <QrCode className="w-3.5 h-3.5 text-teal-400" />
             {scanning ? t('action.loading') : 'Scan Intake'}
-          </button>
+          </button>*/}
           <button
             type="button"
             onClick={() => {

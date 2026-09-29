@@ -117,7 +117,7 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <button
+            {/*<button
               type="button"
               onClick={() => onNavigate('cross_state_redistribution')}
               className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors shadow-sm"
@@ -125,6 +125,7 @@ export const NationalDashboard: React.FC<NationalDashboardProps> = ({ onNavigate
               <ArrowLeftRight className="w-4 h-4" />
               Inter-State Transfers
             </button>
+            */}
             <button
               type="button"
               onClick={() => onNavigate('national_alerts')}

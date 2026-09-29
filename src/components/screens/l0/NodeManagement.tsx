@@ -308,7 +308,7 @@ export const NodeManagement: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12" id="node-management-screen">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+      {/*<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Server className="w-5 h-5 text-purple-400" />
@@ -330,7 +330,7 @@ export const NodeManagement: React.FC = () => {
           <Plus className="w-4 h-4" />
           {t('nodes.register_btn')}
         </button>
-      </div>
+      </div>*/}
 
       {/* Success Notification Banner */}
       {registrationSuccessMsg && (
