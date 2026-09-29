@@ -1,3 +1,13 @@
+export interface GeoConstantItem {
+  level: 'STATE' | 'DISTRICT' | 'FACILITY' | 'PHC';
+  id: string;
+  code: string;
+  name: string;
+  parent: string;
+}
+
+export type GeoItem = GeoConstantItem;
+
 export interface PhcGeo {
   id: string; // Facility UUID
   name: string;
@@ -55,966 +65,170 @@ export const BACKEND_PHC_IDS = {
 };
 
 // -------------------------------------------------------------
-// COMPLETE HIERARCHICAL GEOGRAPHY DATABASE
+// UNIFIED FLAT GEOGRAPHIC DATASET (JSON FORMAT)
 // -------------------------------------------------------------
-export const ALL_STATES: StateGeo[] = [
-  // 1. Jharkhand
+export const GEO_CONSTANTS_JSON: GeoConstantItem[] = [
   {
-    id: BACKEND_STATE_IDS.JHARKHAND,
-    name: 'Jharkhand',
-    code: 'JH',
-    region: 'East',
-    districts: [
-      {
-        id: BACKEND_DISTRICT_IDS.RANCHI,
-        name: 'Ranchi',
-        code: 'RAN',
-        stateId: BACKEND_STATE_IDS.JHARKHAND,
-        stateName: 'Jharkhand',
-        headquarters: 'Ranchi City',
-        phcs: [
-          {
-            id: BACKEND_PHC_IDS.ORMANJHI,
-            name: 'Ormanjhi PHC',
-            code: 'ORM_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RANCHI,
-            districtName: 'Ranchi',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 20,
-          },
-          {
-            id: BACKEND_PHC_IDS.KANKE,
-            name: 'Kanke PHC',
-            code: 'KAN_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RANCHI,
-            districtName: 'Ranchi',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 37,
-          },
-          {
-            id: 'phc-ran-namkum-01',
-            name: 'Namkum PHC',
-            code: 'NAM_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RANCHI,
-            districtName: 'Ranchi',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 24,
-          },
-          {
-            id: 'phc-ran-ratu-02',
-            name: 'Ratu PHC',
-            code: 'RAT_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RANCHI,
-            districtName: 'Ranchi',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-ran-mandar-03',
-            name: 'Mandar Referral Hospital & PHC',
-            code: 'MAN_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RANCHI,
-            districtName: 'Ranchi',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'CHC',
-            bedCapacity: 50,
-          },
-        ],
-      },
-      {
-        id: BACKEND_DISTRICT_IDS.RAMGARH,
-        name: 'Ramgarh',
-        code: 'RAM',
-        stateId: BACKEND_STATE_IDS.JHARKHAND,
-        stateName: 'Jharkhand',
-        headquarters: 'Ramgarh Cantonment',
-        phcs: [
-          {
-            id: BACKEND_PHC_IDS.PATRATU,
-            name: 'Patratu PHC',
-            code: 'PAT_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RAMGARH,
-            districtName: 'Ramgarh',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 36,
-          },
-          {
-            id: BACKEND_PHC_IDS.GOLA,
-            name: 'Gola PHC',
-            code: 'GOL_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RAMGARH,
-            districtName: 'Ramgarh',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 20,
-          },
-          {
-            id: 'phc-ram-mandu-01',
-            name: 'Mandu Community Health Centre',
-            code: 'MND_CHC',
-            districtId: BACKEND_DISTRICT_IDS.RAMGARH,
-            districtName: 'Ramgarh',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'CHC',
-            bedCapacity: 45,
-          },
-          {
-            id: 'phc-ram-chitarpur-02',
-            name: 'Chitarpur Block PHC',
-            code: 'CHT_PHC',
-            districtId: BACKEND_DISTRICT_IDS.RAMGARH,
-            districtName: 'Ramgarh',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 18,
-          },
-        ],
-      },
-      {
-        id: 'dist-jh-dhanbad-01',
-        name: 'Dhanbad',
-        code: 'DHN',
-        stateId: BACKEND_STATE_IDS.JHARKHAND,
-        stateName: 'Jharkhand',
-        headquarters: 'Dhanbad City',
-        phcs: [
-          {
-            id: 'phc-dhn-govindpur-01',
-            name: 'Govindpur Block PHC',
-            code: 'GVD_PHC',
-            districtId: 'dist-jh-dhanbad-01',
-            districtName: 'Dhanbad',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 25,
-          },
-          {
-            id: 'phc-dhn-jharia-02',
-            name: 'Jharia Coalfield PHC',
-            code: 'JHR_PHC',
-            districtId: 'dist-jh-dhanbad-01',
-            districtName: 'Dhanbad',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-dhn-nirsa-03',
-            name: 'Nirsa PHC',
-            code: 'NIR_PHC',
-            districtId: 'dist-jh-dhanbad-01',
-            districtName: 'Dhanbad',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 20,
-          },
-        ],
-      },
-      {
-        id: 'dist-jh-bokaro-02',
-        name: 'Bokaro',
-        code: 'BOK',
-        stateId: BACKEND_STATE_IDS.JHARKHAND,
-        stateName: 'Jharkhand',
-        headquarters: 'Bokaro Steel City',
-        phcs: [
-          {
-            id: 'phc-bok-chas-01',
-            name: 'Chas PHC',
-            code: 'CHS_PHC',
-            districtId: 'dist-jh-bokaro-02',
-            districtName: 'Bokaro',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 28,
-          },
-          {
-            id: 'phc-bok-bermo-02',
-            name: 'Bermo Sub-Divisional Hospital & PHC',
-            code: 'BER_PHC',
-            districtId: 'dist-jh-bokaro-02',
-            districtName: 'Bokaro',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'CHC',
-            bedCapacity: 40,
-          },
-        ],
-      },
-      {
-        id: 'dist-jh-jamshedpur-03',
-        name: 'East Singhbhum (Jamshedpur)',
-        code: 'ESN',
-        stateId: BACKEND_STATE_IDS.JHARKHAND,
-        stateName: 'Jharkhand',
-        headquarters: 'Jamshedpur',
-        phcs: [
-          {
-            id: 'phc-esn-potka-01',
-            name: 'Potka Tribal PHC',
-            code: 'POT_PHC',
-            districtId: 'dist-jh-jamshedpur-03',
-            districtName: 'East Singhbhum',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 22,
-          },
-          {
-            id: 'phc-esn-ghatsila-02',
-            name: 'Ghatsila Rural Hospital PHC',
-            code: 'GHT_PHC',
-            districtId: 'dist-jh-jamshedpur-03',
-            districtName: 'East Singhbhum',
-            stateId: BACKEND_STATE_IDS.JHARKHAND,
-            stateName: 'Jharkhand',
-            facilityType: 'PHC',
-            bedCapacity: 35,
-          },
-        ],
-      },
-    ],
+    "level": "STATE",
+    "id": "fcb0924b-8d74-469c-b930-5784af9a9cf4",
+    "code": "JH",
+    "name": "Jharkhand",
+    "parent": ""
   },
-
-  // 2. Maharashtra
   {
-    id: BACKEND_STATE_IDS.MAHARASHTRA,
-    name: 'Maharashtra',
-    code: 'MH',
-    region: 'West',
-    districts: [
-      {
-        id: BACKEND_DISTRICT_IDS.NAGPUR,
-        name: 'Nagpur',
-        code: 'NAG',
-        stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-        stateName: 'Maharashtra',
-        headquarters: 'Nagpur',
-        phcs: [
-          {
-            id: BACKEND_PHC_IDS.HINGNA,
-            name: 'Hingna PHC',
-            code: 'HIN_PHC',
-            districtId: BACKEND_DISTRICT_IDS.NAGPUR,
-            districtName: 'Nagpur',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 25,
-          },
-          {
-            id: BACKEND_PHC_IDS.KAMPTEE,
-            name: 'Kamptee PHC',
-            code: 'KAM_PHC',
-            districtId: BACKEND_DISTRICT_IDS.NAGPUR,
-            districtName: 'Nagpur',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-nag-katol-01',
-            name: 'Katol Rural Hospital & PHC',
-            code: 'KAT_PHC',
-            districtId: BACKEND_DISTRICT_IDS.NAGPUR,
-            districtName: 'Nagpur',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'CHC',
-            bedCapacity: 40,
-          },
-          {
-            id: 'phc-nag-saoner-02',
-            name: 'Saoner PHC',
-            code: 'SAO_PHC',
-            districtId: BACKEND_DISTRICT_IDS.NAGPUR,
-            districtName: 'Nagpur',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 20,
-          },
-        ],
-      },
-      {
-        id: BACKEND_DISTRICT_IDS.PUNE,
-        name: 'Pune',
-        code: 'PUN',
-        stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-        stateName: 'Maharashtra',
-        headquarters: 'Pune City',
-        phcs: [
-          {
-            id: BACKEND_PHC_IDS.HAVELI,
-            name: 'Haveli PHC',
-            code: 'HAV_PHC',
-            districtId: BACKEND_DISTRICT_IDS.PUNE,
-            districtName: 'Pune',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 32,
-          },
-          {
-            id: BACKEND_PHC_IDS.MULSHI,
-            name: 'Mulshi PHC',
-            code: 'MUL_PHC',
-            districtId: BACKEND_DISTRICT_IDS.PUNE,
-            districtName: 'Pune',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 26,
-          },
-          {
-            id: 'phc-pun-baramati-01',
-            name: 'Baramati Rural Health Centre',
-            code: 'BAR_PHC',
-            districtId: BACKEND_DISTRICT_IDS.PUNE,
-            districtName: 'Pune',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'CHC',
-            bedCapacity: 50,
-          },
-          {
-            id: 'phc-pun-shirur-02',
-            name: 'Shirur Taluka PHC',
-            code: 'SHR_PHC',
-            districtId: BACKEND_DISTRICT_IDS.PUNE,
-            districtName: 'Pune',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 24,
-          },
-        ],
-      },
-      {
-        id: 'dist-mh-thane-01',
-        name: 'Thane',
-        code: 'THA',
-        stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-        stateName: 'Maharashtra',
-        headquarters: 'Thane',
-        phcs: [
-          {
-            id: 'phc-tha-bhiwandi-01',
-            name: 'Bhiwandi Tribal PHC',
-            code: 'BHW_PHC',
-            districtId: 'dist-mh-thane-01',
-            districtName: 'Thane',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 25,
-          },
-          {
-            id: 'phc-tha-shahapur-02',
-            name: 'Shahapur Rural Hospital & PHC',
-            code: 'SHH_PHC',
-            districtId: 'dist-mh-thane-01',
-            districtName: 'Thane',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'CHC',
-            bedCapacity: 45,
-          },
-        ],
-      },
-      {
-        id: 'dist-mh-aurangabad-02',
-        name: 'Chhatrapati Sambhajinagar (Aurangabad)',
-        code: 'CSN',
-        stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-        stateName: 'Maharashtra',
-        headquarters: 'Chhatrapati Sambhajinagar',
-        phcs: [
-          {
-            id: 'phc-csn-paithan-01',
-            name: 'Paithan PHC',
-            code: 'PTH_PHC',
-            districtId: 'dist-mh-aurangabad-02',
-            districtName: 'Chhatrapati Sambhajinagar',
-            stateId: BACKEND_STATE_IDS.MAHARASHTRA,
-            stateName: 'Maharashtra',
-            facilityType: 'PHC',
-            bedCapacity: 28,
-          },
-        ],
-      },
-    ],
+    "level": "STATE",
+    "id": "0cc9fb9d-9d2a-45ef-a403-2807d285ddcb",
+    "code": "MH",
+    "name": "Maharashtra",
+    "parent": ""
   },
-
-  // 3. Uttar Pradesh
   {
-    id: 'state-up-01',
-    name: 'Uttar Pradesh',
-    code: 'UP',
-    region: 'North',
-    districts: [
-      {
-        id: 'dist-up-lucknow-01',
-        name: 'Lucknow',
-        code: 'LKO',
-        stateId: 'state-up-01',
-        stateName: 'Uttar Pradesh',
-        headquarters: 'Lucknow',
-        phcs: [
-          {
-            id: 'phc-lko-bakshi-01',
-            name: 'Bakshi Ka Talab PHC',
-            code: 'BKT_PHC',
-            districtId: 'dist-up-lucknow-01',
-            districtName: 'Lucknow',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-lko-malihabad-02',
-            name: 'Malihabad Community Health Centre',
-            code: 'MLH_CHC',
-            districtId: 'dist-up-lucknow-01',
-            districtName: 'Lucknow',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'CHC',
-            bedCapacity: 45,
-          },
-          {
-            id: 'phc-lko-sarojini-03',
-            name: 'Sarojini Nagar PHC',
-            code: 'SRJ_PHC',
-            districtId: 'dist-up-lucknow-01',
-            districtName: 'Lucknow',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'PHC',
-            bedCapacity: 25,
-          },
-        ],
-      },
-      {
-        id: 'dist-up-varanasi-02',
-        name: 'Varanasi',
-        code: 'VNS',
-        stateId: 'state-up-01',
-        stateName: 'Uttar Pradesh',
-        headquarters: 'Varanasi',
-        phcs: [
-          {
-            id: 'phc-vns-pindra-01',
-            name: 'Pindra Block PHC',
-            code: 'PND_PHC',
-            districtId: 'dist-up-varanasi-02',
-            districtName: 'Varanasi',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'PHC',
-            bedCapacity: 35,
-          },
-          {
-            id: 'phc-vns-araji-02',
-            name: 'Arajiline Community Health Centre',
-            code: 'ARJ_CHC',
-            districtId: 'dist-up-varanasi-02',
-            districtName: 'Varanasi',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'CHC',
-            bedCapacity: 50,
-          },
-        ],
-      },
-      {
-        id: 'dist-up-gorakhpur-03',
-        name: 'Gorakhpur',
-        code: 'GKP',
-        stateId: 'state-up-01',
-        stateName: 'Uttar Pradesh',
-        headquarters: 'Gorakhpur',
-        phcs: [
-          {
-            id: 'phc-gkp-banshgaon-01',
-            name: 'Banshgaon Primary Health Centre',
-            code: 'BSG_PHC',
-            districtId: 'dist-up-gorakhpur-03',
-            districtName: 'Gorakhpur',
-            stateId: 'state-up-01',
-            stateName: 'Uttar Pradesh',
-            facilityType: 'PHC',
-            bedCapacity: 28,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "c7fd5081-6dd9-434b-8217-ed4e48f16c2a",
+    "code": "HIN_PHC",
+    "name": "Hingna PHC",
+    "parent": "Nagpur"
   },
-
-  // 4. Bihar
   {
-    id: 'state-br-01',
-    name: 'Bihar',
-    code: 'BR',
-    region: 'East',
-    districts: [
-      {
-        id: 'dist-br-patna-01',
-        name: 'Patna',
-        code: 'PAT',
-        stateId: 'state-br-01',
-        stateName: 'Bihar',
-        headquarters: 'Patna',
-        phcs: [
-          {
-            id: 'phc-pat-danapur-01',
-            name: 'Danapur Cantonment PHC',
-            code: 'DNP_PHC',
-            districtId: 'dist-br-patna-01',
-            districtName: 'Patna',
-            stateId: 'state-br-01',
-            stateName: 'Bihar',
-            facilityType: 'PHC',
-            bedCapacity: 32,
-          },
-          {
-            id: 'phc-pat-phulwari-02',
-            name: 'Phulwari Sharif Community Health Centre',
-            code: 'PHL_CHC',
-            districtId: 'dist-br-patna-01',
-            districtName: 'Patna',
-            stateId: 'state-br-01',
-            stateName: 'Bihar',
-            facilityType: 'CHC',
-            bedCapacity: 40,
-          },
-          {
-            id: 'phc-pat-bihta-03',
-            name: 'Bihta Rural PHC',
-            code: 'BHT_PHC',
-            districtId: 'dist-br-patna-01',
-            districtName: 'Patna',
-            stateId: 'state-br-01',
-            stateName: 'Bihar',
-            facilityType: 'PHC',
-            bedCapacity: 24,
-          },
-        ],
-      },
-      {
-        id: 'dist-br-gaya-02',
-        name: 'Gaya',
-        code: 'GAY',
-        stateId: 'state-br-01',
-        stateName: 'Bihar',
-        headquarters: 'Gaya',
-        phcs: [
-          {
-            id: 'phc-gay-bodhgaya-01',
-            name: 'Bodh Gaya Block PHC',
-            code: 'BDG_PHC',
-            districtId: 'dist-br-gaya-02',
-            districtName: 'Gaya',
-            stateId: 'state-br-01',
-            stateName: 'Bihar',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "5682ba02-a5fd-429a-b6e1-f4de6d99c491",
+    "code": "KAM_PHC",
+    "name": "Kamptee PHC",
+    "parent": "Nagpur"
   },
-
-  // 5. Karnataka
   {
-    id: 'state-ka-01',
-    name: 'Karnataka',
-    code: 'KA',
-    region: 'South',
-    districts: [
-      {
-        id: 'dist-ka-bengaluru-01',
-        name: 'Bengaluru Urban',
-        code: 'BLR',
-        stateId: 'state-ka-01',
-        stateName: 'Karnataka',
-        headquarters: 'Bengaluru',
-        phcs: [
-          {
-            id: 'phc-blr-yelahanka-01',
-            name: 'Yelahanka General PHC',
-            code: 'YLH_PHC',
-            districtId: 'dist-ka-bengaluru-01',
-            districtName: 'Bengaluru Urban',
-            stateId: 'state-ka-01',
-            stateName: 'Karnataka',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-blr-krpuram-02',
-            name: 'KR Puram Community Health Centre',
-            code: 'KRP_CHC',
-            districtId: 'dist-ka-bengaluru-01',
-            districtName: 'Bengaluru Urban',
-            stateId: 'state-ka-01',
-            stateName: 'Karnataka',
-            facilityType: 'CHC',
-            bedCapacity: 50,
-          },
-        ],
-      },
-      {
-        id: 'dist-ka-mysuru-02',
-        name: 'Mysuru',
-        code: 'MYS',
-        stateId: 'state-ka-01',
-        stateName: 'Karnataka',
-        headquarters: 'Mysuru',
-        phcs: [
-          {
-            id: 'phc-mys-nanjangud-01',
-            name: 'Nanjangud Taluk PHC',
-            code: 'NAN_PHC',
-            districtId: 'dist-ka-mysuru-02',
-            districtName: 'Mysuru',
-            stateId: 'state-ka-01',
-            stateName: 'Karnataka',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "012a6d36-b35e-4821-a31b-75a521d0b761",
+    "code": "HAV_PHC",
+    "name": "Haveli PHC",
+    "parent": "Pune"
   },
-
-  // 6. Tamil Nadu
   {
-    id: 'state-tn-01',
-    name: 'Tamil Nadu',
-    code: 'TN',
-    region: 'South',
-    districts: [
-      {
-        id: 'dist-tn-chennai-01',
-        name: 'Chennai',
-        code: 'CHE',
-        stateId: 'state-tn-01',
-        stateName: 'Tamil Nadu',
-        headquarters: 'Chennai',
-        phcs: [
-          {
-            id: 'phc-che-tambaram-01',
-            name: 'Tambaram Urban PHC',
-            code: 'TMB_UPHC',
-            districtId: 'dist-tn-chennai-01',
-            districtName: 'Chennai',
-            stateId: 'state-tn-01',
-            stateName: 'Tamil Nadu',
-            facilityType: 'PHC',
-            bedCapacity: 35,
-          },
-          {
-            id: 'phc-che-avadi-02',
-            name: 'Avadi Community Health Centre',
-            code: 'AVD_CHC',
-            districtId: 'dist-tn-chennai-01',
-            districtName: 'Chennai',
-            stateId: 'state-tn-01',
-            stateName: 'Tamil Nadu',
-            facilityType: 'CHC',
-            bedCapacity: 45,
-          },
-        ],
-      },
-      {
-        id: 'dist-tn-coimbatore-02',
-        name: 'Coimbatore',
-        code: 'CBE',
-        stateId: 'state-tn-01',
-        stateName: 'Tamil Nadu',
-        headquarters: 'Coimbatore',
-        phcs: [
-          {
-            id: 'phc-cbe-pollachi-01',
-            name: 'Pollachi Rural PHC',
-            code: 'POL_PHC',
-            districtId: 'dist-tn-coimbatore-02',
-            districtName: 'Coimbatore',
-            stateId: 'state-tn-01',
-            stateName: 'Tamil Nadu',
-            facilityType: 'PHC',
-            bedCapacity: 28,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "e282e34a-4e19-4446-b467-f0f70cec5e38",
+    "code": "MUL_PHC",
+    "name": "Mulshi PHC",
+    "parent": "Pune"
   },
-
-  // 7. Gujarat
   {
-    id: 'state-gj-01',
-    name: 'Gujarat',
-    code: 'GJ',
-    region: 'West',
-    districts: [
-      {
-        id: 'dist-gj-ahmedabad-01',
-        name: 'Ahmedabad',
-        code: 'AHM',
-        stateId: 'state-gj-01',
-        stateName: 'Gujarat',
-        headquarters: 'Ahmedabad',
-        phcs: [
-          {
-            id: 'phc-ahm-sanand-01',
-            name: 'Sanand Block PHC',
-            code: 'SND_PHC',
-            districtId: 'dist-gj-ahmedabad-01',
-            districtName: 'Ahmedabad',
-            stateId: 'state-gj-01',
-            stateName: 'Gujarat',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-          {
-            id: 'phc-ahm-dholka-02',
-            name: 'Dholka Community Health Centre',
-            code: 'DHL_CHC',
-            districtId: 'dist-gj-ahmedabad-01',
-            districtName: 'Ahmedabad',
-            stateId: 'state-gj-01',
-            stateName: 'Gujarat',
-            facilityType: 'CHC',
-            bedCapacity: 40,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "46ba4355-9b57-45a4-91c1-a1f8de0f78cb",
+    "code": "GOL_PHC",
+    "name": "Gola PHC",
+    "parent": "Ramgarh"
   },
-
-  // 8. Rajasthan
   {
-    id: 'state-rj-01',
-    name: 'Rajasthan',
-    code: 'RJ',
-    region: 'North',
-    districts: [
-      {
-        id: 'dist-rj-jaipur-01',
-        name: 'Jaipur',
-        code: 'JAI',
-        stateId: 'state-rj-01',
-        stateName: 'Rajasthan',
-        headquarters: 'Jaipur',
-        phcs: [
-          {
-            id: 'phc-jai-amber-01',
-            name: 'Amer Block Health Centre',
-            code: 'AMR_PHC',
-            districtId: 'dist-rj-jaipur-01',
-            districtName: 'Jaipur',
-            stateId: 'state-rj-01',
-            stateName: 'Rajasthan',
-            facilityType: 'PHC',
-            bedCapacity: 28,
-          },
-          {
-            id: 'phc-jai-sanganer-02',
-            name: 'Sanganer Urban PHC',
-            code: 'SNG_UPHC',
-            districtId: 'dist-rj-jaipur-01',
-            districtName: 'Jaipur',
-            stateId: 'state-rj-01',
-            stateName: 'Rajasthan',
-            facilityType: 'PHC',
-            bedCapacity: 35,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "a34855ee-eb73-40ff-adba-8f4e990a5b86",
+    "code": "PAT_PHC",
+    "name": "Patratu PHC",
+    "parent": "Ramgarh"
   },
-
-  // 9. West Bengal
   {
-    id: 'state-wb-01',
-    name: 'West Bengal',
-    code: 'WB',
-    region: 'East',
-    districts: [
-      {
-        id: 'dist-wb-kolkata-01',
-        name: 'Kolkata',
-        code: 'KOL',
-        stateId: 'state-wb-01',
-        stateName: 'West Bengal',
-        headquarters: 'Kolkata',
-        phcs: [
-          {
-            id: 'phc-kol-saltlake-01',
-            name: 'Bidhannagar Salt Lake Urban PHC',
-            code: 'SLK_UPHC',
-            districtId: 'dist-wb-kolkata-01',
-            districtName: 'Kolkata',
-            stateId: 'state-wb-01',
-            stateName: 'West Bengal',
-            facilityType: 'PHC',
-            bedCapacity: 32,
-          },
-        ],
-      },
-      {
-        id: 'dist-wb-howrah-02',
-        name: 'Howrah',
-        code: 'HWH',
-        stateId: 'state-wb-01',
-        stateName: 'West Bengal',
-        headquarters: 'Howrah',
-        phcs: [
-          {
-            id: 'phc-hwh-domjur-01',
-            name: 'Domjur Rural Hospital & PHC',
-            code: 'DMJ_PHC',
-            districtId: 'dist-wb-howrah-02',
-            districtName: 'Howrah',
-            stateId: 'state-wb-01',
-            stateName: 'West Bengal',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "a1b912f5-0abb-4bf9-b88c-8dd73234e33b",
+    "code": "KAN_PHC",
+    "name": "Kanke PHC",
+    "parent": "Ranchi"
   },
-
-  // 10. Kerala
   {
-    id: 'state-kl-01',
-    name: 'Kerala',
-    code: 'KL',
-    region: 'South',
-    districts: [
-      {
-        id: 'dist-kl-tvm-01',
-        name: 'Thiruvananthapuram',
-        code: 'TVM',
-        stateId: 'state-kl-01',
-        stateName: 'Kerala',
-        headquarters: 'Thiruvananthapuram',
-        phcs: [
-          {
-            id: 'phc-tvm-kalliyoor-01',
-            name: 'Kalliyoor Family Health Centre (FHC)',
-            code: 'KLY_FHC',
-            districtId: 'dist-kl-tvm-01',
-            districtName: 'Thiruvananthapuram',
-            stateId: 'state-kl-01',
-            stateName: 'Kerala',
-            facilityType: 'PHC',
-            bedCapacity: 25,
-          },
-        ],
-      },
-      {
-        id: 'dist-kl-ernakulam-02',
-        name: 'Ernakulam (Kochi)',
-        code: 'EKM',
-        stateId: 'state-kl-01',
-        stateName: 'Kerala',
-        headquarters: 'Kochi',
-        phcs: [
-          {
-            id: 'phc-ekm-aluva-01',
-            name: 'Aluva Taluk PHC',
-            code: 'ALV_PHC',
-            districtId: 'dist-kl-ernakulam-02',
-            districtName: 'Ernakulam',
-            stateId: 'state-kl-01',
-            stateName: 'Kerala',
-            facilityType: 'PHC',
-            bedCapacity: 30,
-          },
-        ],
-      },
-    ],
+    "level": "FACILITY",
+    "id": "150038ee-f99b-42ea-acb8-656fe0335361",
+    "code": "ORM_PHC",
+    "name": "Ormanjhi PHC",
+    "parent": "Ranchi"
   },
-
-  // 11. National Capital Territory of Delhi
   {
-    id: 'state-dl-01',
-    name: 'NCT of Delhi',
-    code: 'DL',
-    region: 'North',
-    districts: [
-      {
-        id: 'dist-dl-newdelhi-01',
-        name: 'New Delhi',
-        code: 'NDL',
-        stateId: 'state-dl-01',
-        stateName: 'NCT of Delhi',
-        headquarters: 'New Delhi',
-        phcs: [
-          {
-            id: 'phc-dl-connaught-01',
-            name: 'Connaught Place Central Dispensary',
-            code: 'CP_CD',
-            districtId: 'dist-dl-newdelhi-01',
-            districtName: 'New Delhi',
-            stateId: 'state-dl-01',
-            stateName: 'NCT of Delhi',
-            facilityType: 'PHC',
-            bedCapacity: 20,
-          },
-        ],
-      },
-      {
-        id: 'dist-dl-south-02',
-        name: 'South Delhi',
-        code: 'SDL',
-        stateId: 'state-dl-01',
-        stateName: 'NCT of Delhi',
-        headquarters: 'Saket',
-        phcs: [
-          {
-            id: 'phc-dl-saket-01',
-            name: 'Mehrauli Polyclinic & PHC',
-            code: 'MHR_PHC',
-            districtId: 'dist-dl-south-02',
-            districtName: 'South Delhi',
-            stateId: 'state-dl-01',
-            stateName: 'NCT of Delhi',
-            facilityType: 'PHC',
-            bedCapacity: 35,
-          },
-        ],
-      },
-    ],
+    "level": "DISTRICT",
+    "id": "bedb103d-8ea3-43f4-a435-b2faa28e4071",
+    "code": "RAM",
+    "name": "Ramgarh",
+    "parent": "Jharkhand"
   },
+  {
+    "level": "DISTRICT",
+    "id": "56abec40-f63d-4eaa-82d2-e281b078d78a",
+    "code": "RAN",
+    "name": "Ranchi",
+    "parent": "Jharkhand"
+  },
+  {
+    "level": "DISTRICT",
+    "id": "05289539-78ad-468d-8c2a-7fd35e6b4d2d",
+    "code": "NAG",
+    "name": "Nagpur",
+    "parent": "Maharashtra"
+  },
+  {
+    "level": "DISTRICT",
+    "id": "a22124e0-fc72-4b53-8dae-1bbf88398d17",
+    "code": "PUN",
+    "name": "Pune",
+    "parent": "Maharashtra"
+  }
 ];
 
+// State Region Mapping
+const STATE_REGION_MAP: Record<string, StateGeo['region']> = {
+  Jharkhand: 'East',
+  Maharashtra: 'West',
+  'Uttar Pradesh': 'North',
+  Bihar: 'East',
+  Karnataka: 'South',
+  'Tamil Nadu': 'South',
+  Gujarat: 'West',
+  Rajasthan: 'North',
+  'West Bengal': 'East',
+  Kerala: 'South',
+  'NCT of Delhi': 'North',
+};
+
 // -------------------------------------------------------------
-// FLAT LOOKUP CONSTANTS & HELPER FUNCTIONS
+// DYNAMIC HIERARCHICAL STRUCTURE DERIVED FROM FLAT JSON DATA
 // -------------------------------------------------------------
+export const ALL_STATES: StateGeo[] = GEO_CONSTANTS_JSON
+  .filter((item) => item.level === 'STATE')
+  .map((stateItem) => {
+    const districtItems = GEO_CONSTANTS_JSON.filter(
+      (item) => item.level === 'DISTRICT' && item.parent === stateItem.name
+    );
+
+    const districts: DistrictGeo[] = districtItems.map((distItem) => {
+      const phcItems = GEO_CONSTANTS_JSON.filter(
+        (item) => (item.level === 'FACILITY' || item.level === 'PHC') && item.parent === distItem.name
+      );
+
+      const phcs: PhcGeo[] = phcItems.map((phcItem) => ({
+        id: phcItem.id,
+        name: phcItem.name,
+        code: phcItem.code,
+        districtId: distItem.id,
+        districtName: distItem.name,
+        stateId: stateItem.id,
+        stateName: stateItem.name,
+        facilityType: phcItem.code.includes('CHC') ? 'CHC' : 'PHC',
+        bedCapacity: 25,
+      }));
+
+      return {
+        id: distItem.id,
+        name: distItem.name,
+        code: distItem.code,
+        stateId: stateItem.id,
+        stateName: stateItem.name,
+        headquarters: distItem.name,
+        phcs,
+      };
+    });
+
+    return {
+      id: stateItem.id,
+      name: stateItem.name,
+      code: stateItem.code,
+      region: STATE_REGION_MAP[stateItem.name] || 'Central',
+      districts,
+    };
+  });
 
 // Flat array of all districts
 export const ALL_DISTRICTS: DistrictGeo[] = ALL_STATES.flatMap((state) => state.districts);
@@ -1056,6 +270,35 @@ export function resolveGeoLocation(id?: string | null): {
 } {
   if (!id) {
     return { type: 'NATIONAL', name: 'Pan-India Platform Scope', details: 'All States & Facilities' };
+  }
+
+  // Check flat JSON dataset first
+  const jsonItem = GEO_CONSTANTS_JSON.find((item) => item.id === id || item.code === id);
+  if (jsonItem) {
+    if (jsonItem.level === 'FACILITY' || jsonItem.level === 'PHC') {
+      return {
+        type: 'PHC',
+        name: jsonItem.name,
+        code: jsonItem.code,
+        details: `District: ${jsonItem.parent}`,
+      };
+    }
+    if (jsonItem.level === 'DISTRICT') {
+      return {
+        type: 'DISTRICT',
+        name: `${jsonItem.name} District`,
+        code: jsonItem.code,
+        details: `State: ${jsonItem.parent}`,
+      };
+    }
+    if (jsonItem.level === 'STATE') {
+      return {
+        type: 'STATE',
+        name: `${jsonItem.name} State`,
+        code: jsonItem.code,
+        details: 'State Scope',
+      };
+    }
   }
 
   // Check PHCs
