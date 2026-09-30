@@ -4,17 +4,14 @@ import {
   Search,
   Plus,
   QrCode,
-  AlertTriangle,
   Calendar,
   CheckCircle2,
-  Filter,
   Trash2,
   Send,
   Building,
   RefreshCw,
   Clock,
   History,
-  FileSpreadsheet,
   X,
   AlertOctagon,
   ArrowDownLeft,
@@ -65,6 +62,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,8 +114,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         setReceiveDrugId(fetchedDrugs[0].id);
         setDispenseDrugId(fetchedDrugs[0].id);
       }
+      setFetchError(null);
     } catch (err: unknown) {
-      console.warn('Failed to load inventory from API, using local fallback:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to load inventory';
+      setFetchError(msg);
+      setDrugs([]);
+      setBatches([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -128,11 +130,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const loadTransactions = useCallback(async () => {
     try {
       const res = await healthChainApi.getStockTransactions(activeFacilityId, { page_size: 50 });
-      if (res && res.items) {
-        setTransactions(res.items);
-      }
-    } catch (err) {
-      console.warn('Failed to load transactions:', err);
+      setTransactions(res?.items ?? []);
+      setFetchError(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load transactions';
+      setFetchError(msg);
+      setTransactions([]);
     }
   }, [activeFacilityId]);
 
@@ -293,7 +296,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             {t('action.refresh')}
           </button>
-          {/*<button
+          {/*
+          <button
             type="button"
             onClick={handleSimulateScan}
             disabled={scanning}
@@ -301,7 +305,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           >
             <QrCode className="w-3.5 h-3.5 text-teal-400" />
             {scanning ? t('action.loading') : 'Scan Intake'}
-          </button>*/}
+          </button>
+          */}
           <button
             type="button"
             onClick={() => {
@@ -327,6 +332,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       {/* Toast Feedback */}
       {feedback && (
         <div
+          role="status"
+          aria-live="polite"
           className={`p-4 rounded-xl border text-xs flex items-center justify-between ${
             feedback.type === 'success'
               ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200'
@@ -341,7 +348,44 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             )}
             <span>{feedback.message}</span>
           </div>
-          <button type="button" onClick={() => setFeedback(null)} className="text-slate-400 hover:text-slate-200">
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-slate-400 hover:text-slate-200"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Fetch Error Banner */}
+      {fetchError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-4 rounded-xl border bg-rose-950/80 border-rose-700/60 text-rose-200 text-xs flex items-start gap-3"
+        >
+          <AlertOctagon className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-rose-100">
+              Failed to load inventory data
+            </div>
+            <div className="text-rose-300/90 mt-0.5">{fetchError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            className="text-rose-300 hover:text-rose-100 text-[11px] font-semibold px-2 py-1 rounded border border-rose-700/60 hover:bg-rose-900/40 transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => setFetchError(null)}
+            className="text-rose-300 hover:text-rose-100"
+            aria-label="Dismiss"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -370,7 +414,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <span className="text-xs text-slate-400">Total Batches:</span>
           <div className="text-2xl font-bold text-slate-100 mt-1">{batches.length}</div>
-          <div className="text-[11px] text-teal-400 mt-0.5">{totalStockUnits.toLocaleString()} total units</div>
+          <div className="text-[11px] text-teal-400 mt-0.5">
+            {totalStockUnits.toLocaleString()} total units
+          </div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -381,7 +427,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <span className="text-xs text-slate-400">Expiring in 90D:</span>
-          <div className={`text-2xl font-bold mt-1 ${expiringCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+          <div
+            className={`text-2xl font-bold mt-1 ${
+              expiringCount > 0 ? 'text-amber-400' : 'text-emerald-400'
+            }`}
+          >
             {expiringCount}
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">FEFO prioritized dispatch</div>
@@ -465,7 +515,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <table className="w-full text-left text-xs text-slate-300">
               <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
                 <tr>
-                  <th className="py-3 px-4">Drug & Catalog ID</th>
+                  <th className="py-3 px-4">Drug &amp; Catalog ID</th>
                   <th className="py-3 px-4">Batch Number</th>
                   <th className="py-3 px-4">Quantity in Stock</th>
                   <th className="py-3 px-4">Expiry Date</th>
@@ -486,7 +536,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 ) : filteredBatches.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">
-                      No medicine batches recorded for this facility yet. Click "Receive Stock" or "Scan Intake" to add stock.
+                      {fetchError
+                        ? 'Unable to load batches. Please retry.'
+                        : 'No medicine batches recorded for this facility yet. Click "Receive Stock" to add stock.'}
                     </td>
                   </tr>
                 ) : (
@@ -504,7 +556,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           {batch.batch_number}
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-100 text-sm">{batch.quantity.toLocaleString()}</span>
+                          <span className="font-bold text-slate-100 text-sm">
+                            {batch.quantity.toLocaleString()}
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-slate-300">
                           {batch.expiry_date}
@@ -536,7 +590,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-slate-400 text-[11px]">
-                          {batch.received_at ? new Date(batch.received_at).toLocaleDateString() : 'N/A'}
+                          {batch.received_at
+                            ? new Date(batch.received_at).toLocaleDateString()
+                            : 'N/A'}
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <button
@@ -601,8 +657,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               : 'bg-red-950/70 border-red-800 text-red-300'
                           }`}
                         >
-                          {tx.transaction_type === 'receive' && <ArrowDownLeft className="w-3 h-3" />}
-                          {tx.transaction_type === 'dispense' && <ArrowUpRight className="w-3 h-3" />}
+                          {tx.transaction_type === 'receive' && (
+                            <ArrowDownLeft className="w-3 h-3" />
+                          )}
+                          {tx.transaction_type === 'dispense' && (
+                            <ArrowUpRight className="w-3 h-3" />
+                          )}
                           {tx.transaction_type.toUpperCase()}
                         </span>
                       </td>
@@ -610,7 +670,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                         {tx.drug_name || tx.drug_id}
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-slate-100">
-                        {tx.transaction_type === 'receive' ? `+${tx.quantity}` : `-${tx.quantity}`}
+                        {tx.transaction_type === 'receive'
+                          ? `+${tx.quantity}`
+                          : `-${tx.quantity}`}
                       </td>
                       <td className="py-3 px-4 font-mono text-teal-300">
                         {tx.balance_after}
@@ -643,6 +705,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 type="button"
                 onClick={() => setShowReceiveModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -650,24 +713,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <form onSubmit={handleReceiveStock} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Select Medicine *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Select Medicine *
+                </label>
                 <select
                   value={receiveDrugId}
                   onChange={(e) => setReceiveDrugId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-teal-500"
                   required
                 >
-                  {drugs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.category}, {d.unit})
-                    </option>
-                  ))}
+                  {drugs.length === 0 ? (
+                    <option value="">No drugs available in catalog</option>
+                  ) : (
+                    drugs.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.category}, {d.unit})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Batch Number * (Alphanumeric)</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Batch Number * (Alphanumeric)
+                  </label>
                   <input
                     type="text"
                     value={receiveBatchNo}
@@ -681,7 +752,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Quantity Received * (&gt; 0)</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Quantity Received * (&gt; 0)
+                  </label>
                   <input
                     type="number"
                     value={receiveQty}
@@ -695,7 +768,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Expiry Date * (Strictly Future Date)</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Expiry Date * (Strictly Future Date)
+                </label>
                 <input
                   type="date"
                   value={receiveExpiry}
@@ -741,6 +816,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 type="button"
                 onClick={() => setShowDispenseModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -748,23 +824,31 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             <form onSubmit={handleDispenseStock} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Select Medicine *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Select Medicine *
+                </label>
                 <select
                   value={dispenseDrugId}
                   onChange={(e) => setDispenseDrugId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500"
                   required
                 >
-                  {drugs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.category}, {d.unit})
-                    </option>
-                  ))}
+                  {drugs.length === 0 ? (
+                    <option value="">No drugs available in catalog</option>
+                  ) : (
+                    drugs.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.category}, {d.unit})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Quantity to Dispense *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Quantity to Dispense *
+                </label>
                 <input
                   type="number"
                   value={dispenseQty}
@@ -776,7 +860,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Clinical Note / Reason (Optional)</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Clinical Note / Reason (Optional)
+                </label>
                 <input
                   type="text"
                   value={dispenseReason}
@@ -794,8 +880,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     {dispenseResult.message}
                   </div>
                   <div className="text-[11px] text-slate-300">
-                    Total Dispensed: <strong>{dispenseResult.total_dispensed}</strong> | Remaining Facility Stock:{' '}
-                    <strong>{dispenseResult.remaining_stock}</strong>
+                    Total Dispensed: <strong>{dispenseResult.total_dispensed}</strong> |
+                    Remaining Facility Stock: <strong>{dispenseResult.remaining_stock}</strong>
                   </div>
                   {dispenseResult.batches_affected?.map((ba: any, idx: number) => (
                     <div key={idx} className="font-mono text-[10px] text-teal-300">
@@ -840,6 +926,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 type="button"
                 onClick={() => setShowWriteOffModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -850,7 +937,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 Drug: <strong>{selectedBatchForAction.drug_name || 'Medicine'}</strong>
               </div>
               <div>
-                Batch Number: <strong className="font-mono text-amber-300">{selectedBatchForAction.batch_number}</strong>
+                Batch Number:{' '}
+                <strong className="font-mono text-amber-300">
+                  {selectedBatchForAction.batch_number}
+                </strong>
               </div>
               <div>
                 Available Quantity: <strong>{selectedBatchForAction.quantity}</strong>
@@ -860,7 +950,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             <form onSubmit={handleWriteOffStock} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Quantity to Write Off *</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Quantity to Write Off *
+                  </label>
                   <input
                     type="number"
                     value={writeOffQty}
@@ -873,10 +965,14 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Reason Category *</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Reason Category *
+                  </label>
                   <select
                     value={writeOffCategory}
-                    onChange={(e) => setWriteOffCategory(e.target.value as WriteOffReasonEnum)}
+                    onChange={(e) =>
+                      setWriteOffCategory(e.target.value as WriteOffReasonEnum)
+                    }
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-red-500"
                   >
                     <option value="damaged">damaged</option>
@@ -889,7 +985,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Detailed Explanation * (min 5 chars)</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Detailed Explanation * (min 5 chars)
+                </label>
                 <textarea
                   value={writeOffReason}
                   onChange={(e) => setWriteOffReason(e.target.value)}
@@ -924,3 +1022,5 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     </div>
   );
 };
+
+export default InventoryManagement;

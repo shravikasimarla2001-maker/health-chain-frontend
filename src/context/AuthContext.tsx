@@ -29,6 +29,7 @@ interface AuthContextType {
   resetBackendUrl: () => void;
   pingBackend: () => Promise<void>;
   clearLogs: () => void;
+  clearError: () => void;
   setUseMockMode: (val: boolean) => void;
   runPhcApprovalTest: () => Promise<{ success: boolean; data?: unknown; error?: string }>;
   runDistrictAccessTest: (districtId?: string) => Promise<{ success: boolean; data?: unknown; error?: string }>;
@@ -106,12 +107,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setApiLogs([]);
   }, []);
 
-  // Login handler
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // ===================== LOGIN =====================
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // -------- Mock mode (explicitly opted in) --------
       if (useMockMode) {
         const mockResponse = authApiService.mockLogin(email, password);
         setAccessToken(mockResponse.access_token);
@@ -123,28 +129,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      try {
-        const res = await authApiService.login(email, password);
-        setAccessToken(res.access_token);
-        setRefreshToken(res.refresh_token);
-        setUser(res.user);
-        localStorage.setItem('hsc_access_token', res.access_token);
-        localStorage.setItem('hsc_refresh_token', res.refresh_token);
-        localStorage.setItem('hsc_user', JSON.stringify(res.user));
-        setTunnelStatus('online');
-      } catch (err: unknown) {
-        console.warn('Backend login attempt encountered an error, trying fallback:', err);
-        const mockResponse = authApiService.mockLogin(email, password);
-        setAccessToken(mockResponse.access_token);
-        setRefreshToken(mockResponse.refresh_token);
-        setUser(mockResponse.user);
-        localStorage.setItem('hsc_access_token', mockResponse.access_token);
-        localStorage.setItem('hsc_refresh_token', mockResponse.refresh_token);
-        localStorage.setItem('hsc_user', JSON.stringify(mockResponse.user));
-      }
+      // -------- Real backend login --------
+      // ⚠️ NO silent mock fallback here.
+      // If the API fails, propagate the error up to LoginScreen.
+      const res = await authApiService.login(email, password);
+      setAccessToken(res.access_token);
+      setRefreshToken(res.refresh_token);
+      setUser(res.user);
+      localStorage.setItem('hsc_access_token', res.access_token);
+      localStorage.setItem('hsc_refresh_token', res.refresh_token);
+      localStorage.setItem('hsc_user', JSON.stringify(res.user));
+      setTunnelStatus('online');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
       setError(msg);
+      // Make sure stale session state doesn't leak into the app
+      setUser(null);
+      setAccessToken(null);
+      setRefreshToken(null);
+      localStorage.removeItem('hsc_access_token');
+      localStorage.removeItem('hsc_refresh_token');
+      localStorage.removeItem('hsc_user');
+      // Rethrow so the LoginScreen also sees the error
       throw err;
     } finally {
       setIsLoading(false);
@@ -308,6 +314,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetBackendUrl,
         pingBackend,
         clearLogs,
+        clearError,
         setUseMockMode,
         runPhcApprovalTest,
         runDistrictAccessTest,

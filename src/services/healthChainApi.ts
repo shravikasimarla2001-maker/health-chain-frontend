@@ -428,6 +428,226 @@ class HealthChainApiService {
   public async testDistrictData(districtId: string): Promise<any> {
     return this.request(`/auth/test/district-data/${districtId}`, { method: 'GET' });
   }
+
+    // ==========================================
+  // 6. ADMIN DASHBOARD ENDPOINTS
+  // ==========================================
+
+  public async getAdminMetrics(): Promise<{
+    activeNodes: number | null;
+    totalNodes: number | null;
+    globalModelAccuracy: number | null;
+    accuracyDelta: number | null;
+    registeredUsers: number | null;
+  }> {
+    return this.request('/admin/metrics', { method: 'GET' });
+  }
+
+  public async getServiceHealth(): Promise<
+    Array<{ name: string; status: string; latency: string; load: string }>
+  > {
+    return this.request('/admin/services/health', { method: 'GET' });
+  }
+
+  // ==========================================
+  // 7. FEDERATED LEARNING ENDPOINTS
+  // ==========================================
+
+  public async getCurrentFlRound(): Promise<{
+    roundNumber: number | null;
+    convergencePct: number | null;
+    participatingNodes: number | null;
+    totalNodes: number | null;
+    loss: number | null;
+    etaMinutes: number | null;
+  }> {
+    return this.request('/fl/rounds/current', { method: 'GET' });
+  }
+
+  public async getFlRounds(): Promise<{ items: any[] }> {
+    return this.request('/fl/rounds', { method: 'GET' });
+  }
+
+  public async pauseFlRound(roundNumber: number): Promise<void> {
+    return this.request(`/fl/rounds/${roundNumber}/pause`, { method: 'POST' });
+  }
+
+  public async resumeFlRound(roundNumber: number): Promise<void> {
+    return this.request(`/fl/rounds/${roundNumber}/resume`, { method: 'POST' });
+  }
+
+  // ==========================================
+  // 8. EDGE NODE MANAGEMENT ENDPOINTS
+  // ==========================================
+
+  public async getEdgeNodes(params?: {
+    tier?: string;
+    state_id?: string;
+    district_id?: string;
+    search?: string;
+  }): Promise<{ items: any[] }> {
+    const q = new URLSearchParams();
+    if (params?.tier) q.append('tier', params.tier);
+    if (params?.state_id) q.append('state_id', params.state_id);
+    if (params?.district_id) q.append('district_id', params.district_id);
+    if (params?.search) q.append('search', params.search);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request(`/nodes${qs}`, { method: 'GET' });
+  }
+
+  public async approveNode(nodeId: string): Promise<void> {
+    return this.request(`/nodes/${nodeId}/approve`, { method: 'POST' });
+  }
+
+  public async registerNode(data: {
+    tier: string;
+    state_id: string;
+    district_id?: string;
+    phc_id?: string;
+    name?: string;
+    ip_address: string;
+    hardware_profile?: string;
+  }): Promise<{ id: string; name: string; token: string; ip_address: string }> {
+    return this.request('/nodes', { method: 'POST' }, data);
+  }
+
+  // ==========================================
+  // 9. ALERTS & NOTIFICATIONS ENDPOINTS
+  // ==========================================
+
+  public async getAlerts(params?: { tier?: string }): Promise<{ items: any[] }> {
+    const q = new URLSearchParams();
+    if (params?.tier) q.append('tier', params.tier);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request(`/alerts${qs}`, { method: 'GET' });
+  }
+
+  public async markAlertAsRead(alertId: string): Promise<void> {
+    return this.request(`/alerts/${alertId}/read`, { method: 'POST' });
+  }
+
+  public async markAllAlertsAsRead(): Promise<void> {
+    return this.request('/alerts/read-all', { method: 'POST' });
+  }
+
+  // Scope-specific alert feeds
+  public async getNationalAlerts(): Promise<{ items: any[] }> {
+    return this.request('/alerts/national', { method: 'GET' });
+  }
+
+  public async getStateAlerts(): Promise<{ items: any[] }> {
+    return this.request('/alerts/state', { method: 'GET' });
+  }
+
+  public async getDistrictAlerts(): Promise<{ items: any[] }> {
+    return this.request('/alerts/district', { method: 'GET' });
+  }
+
+  public async getPhcAlerts(): Promise<{ items: any[] }> {
+    return this.request('/alerts/phc', { method: 'GET' });
+  }
+
+  public async dispatchNationalAdvisory(alertId: string): Promise<void> {
+    return this.request(`/alerts/national/${alertId}/dispatch`, { method: 'POST' });
+  }
+
+  // ==========================================
+  // 10. DASHBOARD SUMMARY ENDPOINTS
+  // ==========================================
+
+  public async getNationalDashboardSummary(): Promise<{ states: any[] }> {
+    return this.request('/dashboard/national/summary', { method: 'GET' });
+  }
+
+  public async getStateDashboardSummary(): Promise<{ districts: any[] }> {
+    return this.request('/dashboard/state/summary', { method: 'GET' });
+  }
+
+  public async getDistrictDashboardSummary(): Promise<{ phcs: any[] }> {
+    return this.request('/dashboard/district/summary', { method: 'GET' });
+  }
+
+  // ==========================================
+  // 11. FORECAST ENDPOINTS
+  // ==========================================
+
+  public async getNationalForecast(): Promise<{
+    aggregate: any;
+    states: any[];
+  }> {
+    return this.request('/forecast/national', { method: 'GET' });
+  }
+
+  public async getStateForecast(): Promise<{ districts: any[] }> {
+    return this.request('/forecast/state', { method: 'GET' });
+  }
+
+  public async getDistrictForecast(): Promise<{ phcs: any[] }> {
+    return this.request('/forecast/district', { method: 'GET' });
+  }
+
+  public async getPhcForecast(): Promise<{ items: any[] }> {
+    return this.request('/forecast/phc', { method: 'GET' });
+  }
+
+  // ==========================================
+  // 12. PHC FACILITY ENDPOINTS
+  // ==========================================
+
+  public async getPhcInventory(): Promise<any[]> {
+    return this.request('/phc/inventory', { method: 'GET' });
+  }
+
+  public async getPhcBeds(): Promise<any[]> {
+    return this.request('/phc/beds', { method: 'GET' });
+  }
+
+  public async getPhcStaff(): Promise<any[]> {
+    return this.request('/phc/staff', { method: 'GET' });
+  }
+
+  public async getDistrictPhcs(): Promise<{ items: any[] }> {
+    return this.request('/district/phcs', { method: 'GET' });
+  }
+
+  public async updatePhcMoPhone(phcId: string, phone: string): Promise<void> {
+    return this.request(
+      `/district/phcs/${phcId}/mo-phone`,
+      { method: 'PATCH' },
+      { mo_phone: phone }
+    );
+  }
+
+  // ==========================================
+  // 13. TRUCK / FLEET ENDPOINTS (Pending backend)
+  // ==========================================
+
+  public async listTrucks(params?: {
+    status?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ items: any[]; pagination: any }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.append('status', params.status);
+    if (params?.search) q.append('search', params.search);
+    if (params?.page) q.append('page', String(params.page));
+    if (params?.page_size) q.append('page_size', String(params.page_size));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request(`/trucks${qs}`, { method: 'GET' });
+  }
+
+  public async createTruck(data: any): Promise<any> {
+    return this.request('/trucks', { method: 'POST' }, data);
+  }
+
+  public async updateTruck(truckId: string, data: any): Promise<any> {
+    return this.request(`/trucks/${truckId}`, { method: 'PATCH' }, data);
+  }
+
+  public async deleteTruck(truckId: string): Promise<void> {
+    return this.request(`/trucks/${truckId}`, { method: 'DELETE' });
+  }
 }
 
 export const healthChainApi = new HealthChainApiService();

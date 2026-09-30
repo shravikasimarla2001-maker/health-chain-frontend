@@ -359,6 +359,7 @@ export type L1ScreenKey =
   | 'national_dashboard'
   | 'cross_state_redistribution'
   | 'national_alerts'
+  | 'national_forecast'
   | 'reports_analytics'
   | 'fl_overview';
 

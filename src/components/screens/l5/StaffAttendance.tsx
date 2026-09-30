@@ -2,18 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   UserCheck,
   CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
   Calendar,
   Building,
   RefreshCw,
-  Users,
   Edit2,
   X,
-  FileCheck,
-  Briefcase,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
 import { useAuth } from '../../../context/AuthContext';
@@ -47,11 +42,14 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
     '150038ee-f99b-42ea-acb8-656fe0335361';
 
   const [activeFacilityId, setActiveFacilityId] = useState<string>(initialFacilityId);
-  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
   const [roster, setRoster] = useState<RosterItemResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Correction Modal State
   const [correctionTarget, setCorrectionTarget] = useState<RosterItemResponse | null>(null);
@@ -60,65 +58,65 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
   const [correctionRemarks, setCorrectionRemarks] = useState<string>('');
   const [isCorrecting, setIsCorrecting] = useState<boolean>(false);
 
-  // Mark Modal State
-  const [markTarget, setMarkTarget] = useState<RosterItemResponse | null>(null);
-  const [markStatus, setMarkStatus] = useState<AttendanceStatusEnum>('present');
-  const [markRemarks, setMarkRemarks] = useState<string>('Morning duty shift');
-  const [isMarking, setIsMarking] = useState<boolean>(false);
-
   // Summary State
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
   const [showSummaryView, setShowSummaryView] = useState<boolean>(false);
+  const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setFeedback({ type, message });
     setTimeout(() => setFeedback(null), 4000);
   };
 
+  // ===================== LOAD ROSTER =====================
   const loadRoster = useCallback(async () => {
     setRefreshing(true);
     try {
       const data = await healthChainApi.getFacilityRoster(activeFacilityId, selectedDate);
       setRoster(data || []);
+      setFetchError(null);
     } catch (err: unknown) {
-      console.warn('API error loading roster, using local fallback:', err);
-      // Fallback
-      const fallbackRoster: RosterItemResponse[] = (staff || []).map((s) => ({
-        user_id: s.id,
-        full_name: s.name,
-        user_email: `${s.name.toLowerCase().replace(/[^a-z]/g, '')}@hsc.gov.in`,
-        status: s.status === 'ABSENT' ? 'absent' : 'present',
-        check_in_time: s.status === 'ABSENT' ? null : new Date().toISOString(),
-        check_out_time: null,
-        remarks: 'Local roster record',
-        attendance_id: `att-${s.id}`,
-      }));
-      setRoster(fallbackRoster);
+      // No fake fallback — surface the error and clear the roster
+      const msg = err instanceof Error ? err.message : 'Failed to load staff roster';
+      setFetchError(msg);
+      setRoster([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeFacilityId, selectedDate, staff]);
+  }, [activeFacilityId, selectedDate]);
 
   useEffect(() => {
     loadRoster();
   }, [loadRoster]);
 
-  // Load Summary
+  // ===================== LOAD SUMMARY =====================
   const loadSummary = async () => {
+    setShowSummaryView(true);
+    setSummaryLoading(true);
+    setSummaryError(null);
     try {
       const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-      const res = await healthChainApi.getFacilityAttendanceSummary(activeFacilityId, firstDay, selectedDate);
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        .toISOString()
+        .split('T')[0];
+      const res = await healthChainApi.getFacilityAttendanceSummary(
+        activeFacilityId,
+        firstDay,
+        selectedDate
+      );
       setSummary(res);
-      setShowSummaryView(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch summary';
-      showToast('error', msg);
+      const msg = err instanceof Error ? err.message : 'Failed to fetch attendance summary';
+      setSummaryError(msg);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
     }
   };
 
-  // Quick Mark (Single Staff)
+  // ===================== QUICK MARK =====================
   const handleQuickMark = async (staffItem: RosterItemResponse, status: AttendanceStatusEnum) => {
     try {
       await healthChainApi.markAttendance(activeFacilityId, {
@@ -136,7 +134,7 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
     }
   };
 
-  // Bulk Mark All Present
+  // ===================== BULK MARK =====================
   const handleBulkMarkPresent = async () => {
     if (roster.length === 0) return;
     try {
@@ -149,7 +147,10 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
           remarks: 'Bulk duty mark',
         })),
       });
-      showToast('success', `All ${roster.length} staff members marked PRESENT for ${selectedDate}.`);
+      showToast(
+        'success',
+        `All ${roster.length} staff members marked PRESENT for ${selectedDate}.`
+      );
       await loadRoster();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Bulk attendance recording failed';
@@ -157,7 +158,7 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
     }
   };
 
-  // Submit Correction (Mandatory reason min 10 chars)
+  // ===================== CORRECTION =====================
   const handleSubmitCorrection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!correctionTarget?.attendance_id || correctionReason.length < 10) return;
@@ -184,11 +185,15 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
     }
   };
 
+  // ===================== DERIVED =====================
   const markedCount = roster.filter((r) => r.status !== null).length;
-  const presentCount = roster.filter((r) => r.status === 'present' || r.status === 'on_duty').length;
+  const presentCount = roster.filter(
+    (r) => r.status === 'present' || r.status === 'on_duty'
+  ).length;
   const absentCount = roster.filter((r) => r.status === 'absent').length;
   const leaveCount = roster.filter((r) => r.status === 'leave').length;
-  const attendanceRate = roster.length > 0 ? Math.round((presentCount / roster.length) * 100) : 0;
+  const attendanceRate =
+    roster.length > 0 ? Math.round((presentCount / roster.length) * 100) : 0;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10" id="staff-attendance-screen">
@@ -199,9 +204,7 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
             <UserCheck className="w-5 h-5 text-emerald-400" />
             {t('attendance.title')}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            {t('attendance.subtitle')}
-          </p>
+          <p className="text-sm text-slate-400 mt-1">{t('attendance.subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -225,7 +228,8 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
           <button
             type="button"
             onClick={handleBulkMarkPresent}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            disabled={roster.length === 0}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <CheckCircle2 className="w-4 h-4" />
             {t('attendance.mark_all_btn')}
@@ -236,6 +240,8 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
       {/* Toast Feedback */}
       {feedback && (
         <div
+          role="status"
+          aria-live="polite"
           className={`p-4 rounded-xl border text-xs flex items-center justify-between ${
             feedback.type === 'success'
               ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200'
@@ -250,7 +256,42 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
             )}
             <span>{feedback.message}</span>
           </div>
-          <button type="button" onClick={() => setFeedback(null)} className="text-slate-400 hover:text-slate-200">
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-slate-400 hover:text-slate-200"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Fetch Error Banner */}
+      {fetchError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-4 rounded-xl border bg-rose-950/80 border-rose-700/60 text-rose-200 text-xs flex items-start gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-rose-100">Failed to load staff roster</div>
+            <div className="text-rose-300/90 mt-0.5">{fetchError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={loadRoster}
+            className="text-rose-300 hover:text-rose-100 text-[11px] font-semibold px-2 py-1 rounded border border-rose-700/60 hover:bg-rose-900/40 transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => setFetchError(null)}
+            className="text-rose-300 hover:text-rose-100"
+            aria-label="Dismiss"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -294,7 +335,9 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
           <div className="text-2xl font-bold text-emerald-400 mt-1">
             {presentCount} / {roster.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{attendanceRate}% duty coverage</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {attendanceRate}% duty coverage
+          </div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -302,7 +345,9 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
           <div className="text-2xl font-bold text-amber-400 mt-1">
             {absentCount + leaveCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{roster.length - markedCount} unmarked</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {roster.length - markedCount} unmarked
+          </div>
         </div>
       </div>
 
@@ -312,7 +357,7 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Staff Member & Email</th>
+                <th className="py-3 px-4">Staff Member &amp; Email</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Check-In Time</th>
                 <th className="py-3 px-4">Check-Out Time</th>
@@ -331,7 +376,9 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
               ) : roster.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400">
-                    No staff members assigned to this facility roster.
+                    {fetchError
+                      ? 'Unable to load roster. Please retry.'
+                      : 'No staff members assigned to this facility roster.'}
                   </td>
                 </tr>
               ) : (
@@ -344,7 +391,9 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                     <tr key={member.user_id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-100">
                         <div>{member.full_name}</div>
-                        <div className="text-slate-400 text-[11px] font-mono">{member.user_email}</div>
+                        <div className="text-slate-400 text-[11px] font-mono">
+                          {member.user_email}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <span
@@ -362,17 +411,20 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-300">
-                        {member.check_in_time ? new Date(member.check_in_time).toLocaleTimeString() : '—'}
+                        {member.check_in_time
+                          ? new Date(member.check_in_time).toLocaleTimeString()
+                          : '—'}
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-300">
-                        {member.check_out_time ? new Date(member.check_out_time).toLocaleTimeString() : '—'}
+                        {member.check_out_time
+                          ? new Date(member.check_out_time).toLocaleTimeString()
+                          : '—'}
                       </td>
                       <td className="py-3.5 px-4 text-slate-400 text-xs truncate max-w-[160px]">
                         {member.remarks || '—'}
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Mark present button */}
                           <button
                             type="button"
                             onClick={() => handleQuickMark(member, 'present')}
@@ -381,7 +433,6 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                           >
                             Present
                           </button>
-                          {/* Mark absent button */}
                           <button
                             type="button"
                             onClick={() => handleQuickMark(member, 'absent')}
@@ -390,7 +441,6 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                           >
                             Absent
                           </button>
-                          {/* Mark on duty button */}
                           <button
                             type="button"
                             onClick={() => handleQuickMark(member, 'on_duty')}
@@ -399,18 +449,20 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                           >
                             On Duty
                           </button>
-                          {/* Correction button (if attendance_id exists) */}
                           {member.attendance_id && (
                             <button
                               type="button"
                               onClick={() => {
                                 setCorrectionTarget(member);
                                 setCorrectionStatus(member.status || 'present');
-                                setCorrectionReason('Biometric record correction per supervisor review');
+                                setCorrectionReason(
+                                  'Biometric record correction per supervisor review'
+                                );
                                 setCorrectionRemarks(member.remarks || '');
                               }}
                               className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition"
                               title="Audit Correction"
+                              aria-label="Audit correction"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -426,19 +478,20 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
         </div>
       </div>
 
-      {/* Modal: Correction (Mandatory Reason min 10 chars) */}
+      {/* Modal: Correction */}
       {correctionTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <Edit2 className="w-5 h-5 text-amber-400" />
-                Attendance Correction (POST /{'{attendance_id}'}/correct)
+                Attendance Correction
               </h3>
               <button
                 type="button"
                 onClick={() => setCorrectionTarget(null)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -449,16 +502,22 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                 Staff Member: <strong>{correctionTarget.full_name}</strong>
               </div>
               <div>
-                Attendance Date: <span className="font-mono text-teal-400">{selectedDate}</span>
+                Attendance Date:{' '}
+                <span className="font-mono text-teal-400">{selectedDate}</span>
               </div>
               <div>
-                Current Status: <span className="font-mono uppercase text-amber-300">{correctionTarget.status}</span>
+                Current Status:{' '}
+                <span className="font-mono uppercase text-amber-300">
+                  {correctionTarget.status || 'unrecorded'}
+                </span>
               </div>
             </div>
 
             <form onSubmit={handleSubmitCorrection} className="space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Corrected Status *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Corrected Status *
+                </label>
                 <select
                   value={correctionStatus}
                   onChange={(e) => setCorrectionStatus(e.target.value as AttendanceStatusEnum)}
@@ -486,11 +545,15 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                   minLength={10}
                   maxLength={500}
                 />
-                <span className="text-[10px] text-slate-500">{correctionReason.length}/500 chars (min 10)</span>
+                <span className="text-[10px] text-slate-500">
+                  {correctionReason.length}/500 chars (min 10)
+                </span>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Optional Remarks</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Optional Remarks
+                </label>
                 <input
                   type="text"
                   value={correctionRemarks}
@@ -523,7 +586,7 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
       )}
 
       {/* Modal: Summary View */}
-      {showSummaryView && summary && (
+      {showSummaryView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
@@ -535,37 +598,79 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
                 type="button"
                 onClick={() => setShowSummaryView(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">Total Records:</span>
-                <div className="text-xl font-bold text-slate-100 mt-1">{summary.total_records}</div>
+            {summaryLoading ? (
+              <div className="py-8 text-center text-slate-400 text-sm">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-teal-400" />
+                Loading monthly summary...
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">Attendance Rate:</span>
-                <div className="text-xl font-bold text-emerald-400 mt-1">{summary.attendance_rate}%</div>
+            ) : summaryError ? (
+              <div
+                role="alert"
+                className="p-3 bg-rose-950/70 border border-rose-800/60 rounded-lg text-rose-200 text-xs flex items-start gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-semibold text-rose-100">Failed to load summary</div>
+                  <div className="text-rose-300/90 mt-0.5">{summaryError}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadSummary}
+                  className="text-rose-300 hover:text-rose-100 text-[11px] font-semibold px-2 py-1 rounded border border-rose-700/60 hover:bg-rose-900/40 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">Present Count:</span>
-                <div className="text-lg font-bold text-emerald-300 mt-1">{summary.present_count}</div>
+            ) : !summary ? (
+              <div className="py-8 text-center text-slate-500 text-sm">
+                No summary data available for this period.
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">Absent Count:</span>
-                <div className="text-lg font-bold text-red-400 mt-1">{summary.absent_count}</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">Total Records:</span>
+                  <div className="text-xl font-bold text-slate-100 mt-1">
+                    {summary.total_records}
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">Attendance Rate:</span>
+                  <div className="text-xl font-bold text-emerald-400 mt-1">
+                    {summary.attendance_rate}%
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">Present Count:</span>
+                  <div className="text-lg font-bold text-emerald-300 mt-1">
+                    {summary.present_count}
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">Absent Count:</span>
+                  <div className="text-lg font-bold text-red-400 mt-1">
+                    {summary.absent_count}
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">On Duty:</span>
+                  <div className="text-lg font-bold text-blue-300 mt-1">
+                    {summary.on_duty_count}
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <span className="text-slate-400">Leave Count:</span>
+                  <div className="text-lg font-bold text-amber-300 mt-1">
+                    {summary.leave_count}
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">On Duty:</span>
-                <div className="text-lg font-bold text-blue-300 mt-1">{summary.on_duty_count}</div>
-              </div>
-              <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-slate-400">Leave Count:</span>
-                <div className="text-lg font-bold text-amber-300 mt-1">{summary.leave_count}</div>
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-end pt-2">
               <button
@@ -582,3 +687,5 @@ export const StaffAttendance: React.FC<StaffAttendanceProps> = ({ staff = [], on
     </div>
   );
 };
+
+export default StaffAttendance;

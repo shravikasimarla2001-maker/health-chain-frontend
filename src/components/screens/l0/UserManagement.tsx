@@ -17,16 +17,12 @@ import {
   Stethoscope,
   Globe,
   CheckCircle2,
-  Info,
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
 import { UserResponse, UserCreateRequest, ScopeLevelEnum } from '../../../types';
-import { SEED_ACCOUNTS } from '../../../data/seedAccounts';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
   ALL_STATES,
-  ALL_DISTRICTS,
-  ALL_PHCS,
   getDistrictsForState,
   getPhcsForDistrict,
   resolveGeoLocation,
@@ -40,6 +36,7 @@ export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
   const [scopeFilter, setScopeFilter] = useState<string>('ALL');
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -47,7 +44,7 @@ export const UserManagement: React.FC = () => {
   const [resetModalData, setResetModalData] = useState<{ email: string; newPassword?: string } | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Form State for UserCreate
+  // Form state
   const [formFullName, setFormFullName] = useState<string>('');
   const [formEmail, setFormEmail] = useState<string>('');
   const [formPassword, setFormPassword] = useState<string>('Test@123');
@@ -57,12 +54,11 @@ export const UserManagement: React.FC = () => {
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Geographic Cascading State for Creation Modal
+  // Geographic cascading
   const [selectedStateId, setSelectedStateId] = useState<string>(BACKEND_STATE_IDS.JHARKHAND);
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>(BACKEND_DISTRICT_IDS.RANCHI);
   const [selectedPhcId, setSelectedPhcId] = useState<string>(BACKEND_PHC_IDS.ORMANJHI);
 
-  // Synchronize Geographic selections when state or district changes
   const handleStateChange = (stateId: string) => {
     setSelectedStateId(stateId);
     const districts = getDistrictsForState(stateId);
@@ -70,40 +66,25 @@ export const UserManagement: React.FC = () => {
       const firstDistrict = districts[0];
       setSelectedDistrictId(firstDistrict.id);
       const phcs = getPhcsForDistrict(firstDistrict.id);
-      if (phcs.length > 0) {
-        setSelectedPhcId(phcs[0].id);
-      }
+      if (phcs.length > 0) setSelectedPhcId(phcs[0].id);
     }
   };
 
   const handleDistrictChange = (districtId: string) => {
     setSelectedDistrictId(districtId);
     const phcs = getPhcsForDistrict(districtId);
-    if (phcs.length > 0) {
-      setSelectedPhcId(phcs[0].id);
-    }
+    if (phcs.length > 0) setSelectedPhcId(phcs[0].id);
   };
 
-  // Synchronize Scope Level and assigned default roles
   const handleScopeLevelChange = (level: ScopeLevelEnum) => {
     setFormScopeLevel(level);
     switch (level) {
-      case 'platform':
-        setFormRoleName('Super Admin');
-        break;
-      case 'national':
-        setFormRoleName('National Viewer');
-        break;
-      case 'state':
-        setFormRoleName('State Approver');
-        break;
-      case 'district':
-        setFormRoleName('District Approver');
-        break;
+      case 'platform': setFormRoleName('Super Admin'); break;
+      case 'national': setFormRoleName('National Viewer'); break;
+      case 'state': setFormRoleName('State Approver'); break;
+      case 'district': setFormRoleName('District Approver'); break;
       case 'phc':
-      default:
-        setFormRoleName('PHC Operator');
-        break;
+      default: setFormRoleName('PHC Operator'); break;
     }
   };
 
@@ -112,35 +93,21 @@ export const UserManagement: React.FC = () => {
     setTimeout(() => setNotification(null), 5000);
   };
 
+  // ===================== FETCH =====================
   const fetchUsers = useCallback(async () => {
+    setRefreshing(true);
     try {
-      setRefreshing(true);
       const res = await healthChainApi.getUsers({
         page_size: 100,
         search: search.trim() || undefined,
         scope_level: scopeFilter !== 'ALL' ? scopeFilter : undefined,
       });
-      if (res && res.items) {
-        setUsers(res.items);
-      }
+      setUsers(res?.items ?? []);
+      setFetchError(null); // success → clear previous error
     } catch (err: unknown) {
-      console.warn('API error fetching users, using fallback seed accounts:', err);
-      // Fallback to seed accounts
-      const fallback: UserResponse[] = SEED_ACCOUNTS.map((acc, idx) => ({
-        id: `seed-usr-${idx + 1}`,
-        email: acc.email,
-        full_name: acc.name,
-        is_active: true,
-        scope_level: acc.scope.toLowerCase() as any,
-        scope_id: acc.scope === 'PHC' ? BACKEND_PHC_IDS.ORMANJHI : null,
-        roles: [{ id: `r-${idx}`, name: acc.role, description: acc.description }],
-        permissions: acc.permissions,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        phone: '+91 98765 43210',
-        must_change_password: false,
-      }));
-      setUsers(fallback);
+      const msg = err instanceof Error ? err.message : 'Failed to fetch users';
+      setUsers([]);
+      setFetchError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -151,6 +118,7 @@ export const UserManagement: React.FC = () => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // ===================== ACTIONS =====================
   const handleToggleStatus = async (user: UserResponse) => {
     try {
       if (user.is_active) {
@@ -160,9 +128,7 @@ export const UserManagement: React.FC = () => {
         await healthChainApi.activateUser(user.id);
         showNotification('success', `User account ${user.email} has been reactivated.`);
       }
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, is_active: !u.is_active } : u))
-      );
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: !u.is_active } : u)));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update user status';
       showNotification('error', msg);
@@ -172,10 +138,7 @@ export const UserManagement: React.FC = () => {
   const handleResetPassword = async (user: UserResponse) => {
     try {
       const res = await healthChainApi.resetUserPassword(user.id);
-      setResetModalData({
-        email: user.email,
-        newPassword: res.new_password || 'Test@123',
-      });
+      setResetModalData({ email: user.email, newPassword: res.new_password || 'Test@123' });
       showNotification('success', `Password successfully reset for ${user.email}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Password reset failed';
@@ -187,15 +150,10 @@ export const UserManagement: React.FC = () => {
     e.preventDefault();
     if (!formFullName || !formEmail || !formPassword) return;
 
-    // Determine final scope_id based on scope_level
     let calculatedScopeId: string | null = null;
-    if (formScopeLevel === 'state') {
-      calculatedScopeId = selectedStateId;
-    } else if (formScopeLevel === 'district') {
-      calculatedScopeId = selectedDistrictId;
-    } else if (formScopeLevel === 'phc') {
-      calculatedScopeId = selectedPhcId;
-    }
+    if (formScopeLevel === 'state') calculatedScopeId = selectedStateId;
+    else if (formScopeLevel === 'district') calculatedScopeId = selectedDistrictId;
+    else if (formScopeLevel === 'phc') calculatedScopeId = selectedPhcId;
 
     setIsSubmitting(true);
     try {
@@ -213,7 +171,6 @@ export const UserManagement: React.FC = () => {
       const created = await healthChainApi.createUser(payload);
       showNotification('success', `User ${created.full_name} (${created.email}) created successfully.`);
       setShowAddModal(false);
-      // Reset text inputs
       setFormFullName('');
       setFormEmail('');
       setFormPassword('Test@123');
@@ -235,22 +192,19 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  // Filtered district and PHC lists for the creation modal
   const districtsForSelectedState = getDistrictsForState(selectedStateId);
   const phcsForSelectedDistrict = getPhcsForDistrict(selectedDistrictId);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10" id="user-management-screen">
-      {/* Header Banner */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-6">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Users className="w-5 h-5 text-purple-400" />
             {t('users.title')}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            {t('users.subtitle')}
-          </p>
+          <p className="text-sm text-slate-400 mt-1">{t('users.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -273,9 +227,34 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Notification Toast */}
+      {/* Sticky Fetch Error Banner */}
+      {fetchError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-4 rounded-xl border bg-rose-950/80 border-rose-700/60 text-rose-200 text-xs flex items-start gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-rose-100">Failed to load users</div>
+            <div className="text-rose-300/90 mt-0.5">{fetchError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFetchError(null)}
+            className="text-rose-300 hover:text-rose-100"
+            aria-label="Dismiss error"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Toast Notification */}
       {notification && (
         <div
+          role="status"
+          aria-live="polite"
           className={`p-4 rounded-xl border text-xs flex items-center justify-between ${
             notification.type === 'success'
               ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200'
@@ -294,13 +273,14 @@ export const UserManagement: React.FC = () => {
             type="button"
             onClick={() => setNotification(null)}
             className="text-slate-400 hover:text-slate-200"
+            aria-label="Dismiss notification"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Search and Scope Filter Tabs */}
+      {/* Search + Scope filter (unchanged) */}
       <div className="flex flex-col sm:flex-row items-center gap-3 justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -312,7 +292,6 @@ export const UserManagement: React.FC = () => {
             className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-purple-500"
           />
         </div>
-
         <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto text-xs">
           {['ALL', 'platform', 'national', 'state', 'district', 'phc'].map((scope) => (
             <button
@@ -357,7 +336,9 @@ export const UserManagement: React.FC = () => {
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-400">
-                    No users found matching current filter.
+                    {fetchError
+                      ? 'Unable to load users. Please retry.'
+                      : 'No users found matching current filter.'}
                   </td>
                 </tr>
               ) : (
@@ -366,7 +347,6 @@ export const UserManagement: React.FC = () => {
                     user.roles?.[0]?.name ||
                     (typeof user.roles?.[0] === 'string' ? user.roles[0] : 'User');
                   const geo = resolveGeoLocation(user.scope_id);
-
                   return (
                     <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-4">
@@ -406,9 +386,7 @@ export const UserManagement: React.FC = () => {
                             {geo.name}
                           </div>
                           {geo.details && (
-                            <div className="text-[10px] text-slate-500 font-mono">
-                              {geo.details}
-                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono">{geo.details}</div>
                           )}
                         </div>
                       </td>
@@ -458,7 +436,7 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Password Reset Result Modal */}
+      {/* Password Reset Modal */}
       {resetModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
@@ -471,21 +449,29 @@ export const UserManagement: React.FC = () => {
                 type="button"
                 onClick={() => setResetModalData(null)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              The backend generated a new temporary password for <strong>{resetModalData.email}</strong>:
+              The backend generated a new temporary password for{' '}
+              <strong>{resetModalData.email}</strong>:
             </p>
             <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-700 rounded-lg">
-              <code className="text-sm font-mono text-emerald-400 font-bold">{resetModalData.newPassword}</code>
+              <code className="text-sm font-mono text-emerald-400 font-bold">
+                {resetModalData.newPassword}
+              </code>
               <button
                 type="button"
                 onClick={handleCopyPassword}
                 className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded flex items-center gap-1 transition"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
@@ -518,6 +504,7 @@ export const UserManagement: React.FC = () => {
                 type="button"
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -538,7 +525,6 @@ export const UserManagement: React.FC = () => {
                     maxLength={150}
                   />
                 </div>
-
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Official HSC Email *</label>
                   <input
@@ -554,7 +540,9 @@ export const UserManagement: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Initial Password * (min 8 chars)</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Initial Password * (min 8 chars)
+                  </label>
                   <input
                     type="text"
                     value={formPassword}
@@ -564,9 +552,10 @@ export const UserManagement: React.FC = () => {
                     minLength={8}
                   />
                 </div>
-
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Phone Number (Optional)</label>
+                  <label className="block font-medium text-slate-300 mb-1">
+                    Phone Number (Optional)
+                  </label>
                   <input
                     type="tel"
                     value={formPhone}
@@ -593,7 +582,6 @@ export const UserManagement: React.FC = () => {
                     <option value="phc">phc</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block font-medium text-slate-300 mb-1">Assigned Role *</label>
                   <select
@@ -615,14 +603,13 @@ export const UserManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* DYNAMIC JURISDICTION / SCOPE DROPDOWNS BASED ON GEO CONSTANTS */}
+              {/* Jurisdiction block — unchanged from your original */}
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
                 <div className="font-semibold text-slate-300 text-xs flex items-center gap-1.5">
                   <Building className="w-3.5 h-3.5 text-purple-400" />
                   <span>Geographic Jurisdiction Configuration:</span>
                 </div>
 
-                {/* Scope: State */}
                 {formScopeLevel === 'state' && (
                   <div>
                     <label className="block font-medium text-slate-400 mb-1">Select State *</label>
@@ -638,13 +625,9 @@ export const UserManagement: React.FC = () => {
                         </option>
                       ))}
                     </select>
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      User will govern all districts and healthcare facilities in {ALL_STATES.find(s => s.id === selectedStateId)?.name || 'the state'}.
-                    </span>
                   </div>
                 )}
 
-                {/* Scope: District */}
                 {formScopeLevel === 'district' && (
                   <div className="space-y-2.5">
                     <div>
@@ -661,7 +644,6 @@ export const UserManagement: React.FC = () => {
                         ))}
                       </select>
                     </div>
-
                     <div>
                       <label className="block font-medium text-slate-400 mb-1">Select District *</label>
                       <select
@@ -676,14 +658,10 @@ export const UserManagement: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <span className="text-[10px] text-slate-500 mt-1 block">
-                        Assigned jurisdiction: {districtsForSelectedState.find(d => d.id === selectedDistrictId)?.name || 'District'} District.
-                      </span>
                     </div>
                   </div>
                 )}
 
-                {/* Scope: PHC */}
                 {formScopeLevel === 'phc' && (
                   <div className="space-y-2.5">
                     <div className="grid grid-cols-2 gap-2">
@@ -701,7 +679,6 @@ export const UserManagement: React.FC = () => {
                           ))}
                         </select>
                       </div>
-
                       <div>
                         <label className="block font-medium text-slate-400 mb-1">District</label>
                         <select
@@ -717,7 +694,6 @@ export const UserManagement: React.FC = () => {
                         </select>
                       </div>
                     </div>
-
                     <div>
                       <label className="block font-medium text-slate-400 mb-1">
                         Select Primary Health Centre (PHC) *
@@ -734,19 +710,17 @@ export const UserManagement: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <span className="text-[10px] text-teal-400 mt-1 block">
-                        Assigned facility: {phcsForSelectedDistrict.find(p => p.id === selectedPhcId)?.name || 'PHC'}
-                      </span>
                     </div>
                   </div>
                 )}
 
-                {/* Scope: Platform / National */}
                 {(formScopeLevel === 'platform' || formScopeLevel === 'national') && (
                   <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 flex items-center gap-2">
                     <Globe className="w-4 h-4 text-purple-400 shrink-0" />
                     <div>
-                      <span className="font-semibold text-slate-200">Pan-India National Jurisdiction</span>
+                      <span className="font-semibold text-slate-200">
+                        Pan-India National Jurisdiction
+                      </span>
                       <p className="text-[11px] text-slate-500">
                         This role has full access across all 28 states, 8 UTs, and affiliated health centres.
                       </p>

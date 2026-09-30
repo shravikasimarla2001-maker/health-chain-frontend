@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AlertNotification, RoleTier } from '../../../types';
-import { INITIAL_ALERTS } from '../../../data/mockAppData';
+import { healthChainApi } from '../../../services/healthChainApi';
 import {
   Bell,
   AlertTriangle,
@@ -11,6 +11,9 @@ import {
   CheckCircle,
   Truck,
   Flame,
+  AlertCircle,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 
 interface NotificationsScreenProps {
@@ -32,9 +35,88 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<string>('ALL');
 
-  const safeAlerts = Array.isArray(alerts) && alerts.length > 0 ? alerts : (INITIAL_ALERTS || []);
+  // ===================== DATA STATE =====================
+  const [localAlerts, setLocalAlerts] = useState<AlertNotification[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const navigateFn = onNavigateToScreen || onNavigate || (() => {});
 
+  // If parent passes alerts, use those; otherwise use locally-fetched list.
+  const usingPropData = Array.isArray(alerts);
+  const safeAlerts = usingPropData ? (alerts as AlertNotification[]) : localAlerts;
+
+  // ===================== FETCH =====================
+  const fetchAlerts = useCallback(async () => {
+    // If parent owns the data, don't fetch here.
+    if (usingPropData) return;
+
+    setRefreshing(true);
+    try {
+      // TODO: replace with real endpoint when available:
+      // const res = await healthChainApi.getAlerts({ tier });
+      // setLocalAlerts(res.items ?? []);
+      setLocalAlerts([]);
+      setFetchError(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch alerts';
+      setLocalAlerts([]);
+      setFetchError(msg);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [usingPropData, tier]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchAlerts();
+  }, [fetchAlerts]);
+
+  // ===================== ACTIONS =====================
+  const handleMarkAsRead = async (id: string) => {
+    setActionError(null);
+    setActionLoading(`mark-read-${id}`);
+    try {
+      // If parent owns data, delegate to parent callback
+      if (usingPropData) {
+        onMarkAsRead(id);
+      } else {
+        // TODO: await healthChainApi.markAlertAsRead(id);
+        setLocalAlerts((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, isRead: true } : a))
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark alert as read';
+      setActionError(msg);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    setActionError(null);
+    setActionLoading('mark-all-read');
+    try {
+      if (usingPropData) {
+        onMarkAllAsRead();
+      } else {
+        // TODO: await healthChainApi.markAllAlertsAsRead();
+        setLocalAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark all alerts as read';
+      setActionError(msg);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ===================== FILTER =====================
   const filteredAlerts = safeAlerts.filter((a) => {
     if (filterType === 'ALL') return true;
     if (filterType === 'UNREAD') return !a.isRead;
@@ -73,7 +155,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10" id="notifications-screen-container">
-      {/* Top action header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-5">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -81,20 +163,91 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
             Alerts & Notifications
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Real-time stock-out, cold chain excursions, batch expiry, and redistribution signals for your operational scope.
+            Real-time stock-out, cold chain excursions, batch expiry, and redistribution signals
+            for your operational scope.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {!usingPropData && (
+            <button
+              type="button"
+              onClick={fetchAlerts}
+              disabled={refreshing}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-colors disabled:opacity-50"
+              title="Refresh alerts"
+              aria-label="Refresh alerts"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
           <button
             type="button"
-            onClick={onMarkAllAsRead}
-            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors"
+            onClick={handleMarkAllAsRead}
+            disabled={actionLoading === 'mark-all-read' || safeAlerts.length === 0}
+            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <CheckCheck className="w-4 h-4 text-emerald-400" />
+            {actionLoading === 'mark-all-read' ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCheck className="w-4 h-4 text-emerald-400" />
+            )}
             Mark All as Read
           </button>
         </div>
       </div>
+
+      {/* Fetch Error Banner */}
+      {fetchError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-4 rounded-xl border bg-rose-950/80 border-rose-700/60 text-rose-200 text-xs flex items-start gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-rose-100">Failed to load alerts</div>
+            <div className="text-rose-300/90 mt-0.5">{fetchError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={fetchAlerts}
+            className="text-rose-300 hover:text-rose-100 text-[11px] font-semibold px-2 py-1 rounded border border-rose-700/60 hover:bg-rose-900/40 transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => setFetchError(null)}
+            className="text-rose-300 hover:text-rose-100"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Action Error Banner */}
+      {actionError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="p-4 rounded-xl border bg-amber-950/70 border-amber-700/60 text-amber-200 text-xs flex items-start gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-amber-100">Action failed</div>
+            <div className="text-amber-300/90 mt-0.5">{actionError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-amber-300 hover:text-amber-100"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 text-xs">
@@ -103,8 +256,14 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
         </span>
         {[
           { id: 'ALL', label: `All (${safeAlerts.length})` },
-          { id: 'UNREAD', label: `Unread (${safeAlerts.filter((a) => !a.isRead).length})` },
-          { id: 'CRITICAL', label: `Critical (${safeAlerts.filter((a) => a.severity === 'CRITICAL').length})` },
+          {
+            id: 'UNREAD',
+            label: `Unread (${safeAlerts.filter((a) => !a.isRead).length})`,
+          },
+          {
+            id: 'CRITICAL',
+            label: `Critical (${safeAlerts.filter((a) => a.severity === 'CRITICAL').length})`,
+          },
           { id: 'STOCK_OUT', label: 'Stock-outs' },
           { id: 'TRANSFERS', label: 'Transfers' },
         ].map((tab) => (
@@ -123,13 +282,22 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
         ))}
       </div>
 
-      {/* Alerts list */}
+      {/* Alerts List */}
       <div className="space-y-3">
-        {filteredAlerts.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center bg-slate-900/60 border border-slate-800 rounded-xl">
+            <RefreshCw className="w-6 h-6 text-emerald-400 mx-auto mb-3 animate-spin" />
+            <div className="text-sm text-slate-400">Loading alerts...</div>
+          </div>
+        ) : filteredAlerts.length === 0 ? (
           <div className="p-12 text-center bg-slate-900/60 border border-slate-800 rounded-xl">
             <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-80" />
             <h3 className="text-base font-semibold text-slate-200">No Notifications</h3>
-            <p className="text-sm text-slate-400 mt-1">All supply chain signals are normal for the selected filter.</p>
+            <p className="text-sm text-slate-400 mt-1">
+              {fetchError
+                ? 'Unable to load alerts. Please retry.'
+                : 'All supply chain signals are normal for the selected filter.'}
+            </p>
           </div>
         ) : (
           filteredAlerts.map((alert) => (
@@ -148,7 +316,11 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${getSeverityBadge(alert.severity)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${getSeverityBadge(
+                          alert.severity
+                        )}`}
+                      >
                         {alert.severity}
                       </span>
                       <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded font-mono">
@@ -166,7 +338,11 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                       )}
                     </div>
 
-                    <h3 className={`text-sm font-semibold mt-1.5 ${alert.isRead ? 'text-slate-300' : 'text-slate-100'}`}>
+                    <h3
+                      className={`text-sm font-semibold mt-1.5 ${
+                        alert.isRead ? 'text-slate-300' : 'text-slate-100'
+                      }`}
+                    >
                       {alert.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -186,9 +362,13 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                   {!alert.isRead && (
                     <button
                       type="button"
-                      onClick={() => onMarkAsRead(alert.id)}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                      onClick={() => handleMarkAsRead(alert.id)}
+                      disabled={actionLoading === `mark-read-${alert.id}`}
+                      className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors disabled:opacity-50 flex items-center gap-1"
                     >
+                      {actionLoading === `mark-read-${alert.id}` ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : null}
                       Mark Read
                     </button>
                   )}

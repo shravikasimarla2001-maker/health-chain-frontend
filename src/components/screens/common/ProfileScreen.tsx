@@ -173,7 +173,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800">
+            {/*<div className="pt-2 border-t border-slate-800">
               <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
                 <Bell className="w-4 h-4 text-amber-400" />
                 {t('profile.notifications_heading')}
@@ -204,7 +204,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   />
                 </label>
               </div>
-            </div>
+            </div>*/}
 
             <div className="flex justify-end pt-2">
               <button

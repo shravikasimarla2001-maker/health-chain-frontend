@@ -9,9 +9,9 @@ import {
   RefreshCw,
   History,
   X,
-  ShieldAlert,
   Power,
   Sliders,
+  AlertCircle,
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
 import { useAuth } from '../../../context/AuthContext';
@@ -53,6 +53,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Modals & Drawers
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -68,35 +69,27 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [historyLogs, setHistoryLogs] = useState<BedOccupancyLogResponse[]>([]);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setFeedback({ type, message });
     setTimeout(() => setFeedback(null), 4000);
   };
 
+  // ===================== FETCH =====================
   const loadBeds = useCallback(async () => {
     setRefreshing(true);
     try {
       const summaryData = await healthChainApi.getFacilityBedSummary(activeFacilityId);
       setSummary(summaryData);
-      setBedTypesList(summaryData.by_type || []);
+      setBedTypesList(summaryData?.by_type || []);
+      setFetchError(null); // clear on success
     } catch (err: unknown) {
-      console.warn('API error loading beds summary, trying list or fallback:', err);
-      try {
-        const listData = await healthChainApi.getFacilityBeds(activeFacilityId);
-        setBedTypesList(listData || []);
-        const total = (listData || []).reduce((acc, b) => acc + b.total_beds, 0);
-        const occupied = (listData || []).reduce((acc, b) => acc + b.occupied_beds, 0);
-        setSummary({
-          facility_id: activeFacilityId,
-          total_beds: total,
-          total_occupied: occupied,
-          total_available: total - occupied,
-          by_type: listData,
-        });
-      } catch (listErr) {
-        console.warn('Using local fallback for beds:', listErr);
-      }
+      // No fake fallback — surface the error and leave data empty
+      const msg = err instanceof Error ? err.message : 'Failed to load bed data';
+      setFetchError(msg);
+      setSummary(null);
+      setBedTypesList([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -107,7 +100,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     loadBeds();
   }, [loadBeds]);
 
-  // Handle Quick Adjust Occupancy (+1 or -1)
+  // ===================== OCCUPANCY ADJUST =====================
   const handleAdjustOccupancy = async (bed: BedInventoryResponse, delta: number) => {
     const newCount = Math.max(0, Math.min(bed.total_beds, bed.occupied_beds + delta));
     if (newCount === bed.occupied_beds) return;
@@ -127,7 +120,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     }
   };
 
-  // Handle Add Bed Type
+  // ===================== ADD BED TYPE =====================
   const handleAddBedType = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAdding(true);
@@ -136,7 +129,10 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
         bed_type: newBedType,
         total_beds: Number(newTotalBeds),
       });
-      showToast('success', `Bed type ${newBedType.toUpperCase()} added with capacity ${newTotalBeds}.`);
+      showToast(
+        'success',
+        `Bed type ${newBedType.toUpperCase()} added with capacity ${newTotalBeds}.`
+      );
       setShowAddModal(false);
       await loadBeds();
     } catch (err: unknown) {
@@ -147,7 +143,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     }
   };
 
-  // Handle Update Total Capacity
+  // ===================== UPDATE CAPACITY =====================
   const handleUpdateCapacity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!capacityTarget) return;
@@ -172,7 +168,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     }
   };
 
-  // Handle Toggle Active/Deactivate
+  // ===================== TOGGLE ACTIVE =====================
   const handleToggleActive = async (bed: BedInventoryResponse) => {
     try {
       if (bed.is_active) {
@@ -189,28 +185,36 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     }
   };
 
-  // Handle Open History
+  // ===================== AUDIT HISTORY =====================
   const handleOpenHistory = async () => {
     setShowHistoryModal(true);
     setHistoryLoading(true);
+    setHistoryError(null);
     try {
       const res = await healthChainApi.getBedHistory(activeFacilityId, { page_size: 50 });
       setHistoryLogs(res?.items || []);
-    } catch (err) {
-      console.warn('Failed to load history:', err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load audit history';
+      setHistoryError(msg);
+      setHistoryLogs([]);
     } finally {
       setHistoryLoading(false);
     }
   };
 
-  const totalBeds = summary?.total_beds ?? bedTypesList.reduce((acc, b) => acc + b.total_beds, 0);
-  const totalOccupied = summary?.total_occupied ?? bedTypesList.reduce((acc, b) => acc + b.occupied_beds, 0);
-  const totalAvailable = summary?.total_available ?? totalBeds - totalOccupied;
+  // ===================== DERIVED =====================
+  const totalBeds =
+    summary?.total_beds ?? bedTypesList.reduce((acc, b) => acc + b.total_beds, 0);
+  const totalOccupied =
+    summary?.total_occupied ?? bedTypesList.reduce((acc, b) => acc + b.occupied_beds, 0);
+  const totalAvailable =
+    summary?.total_available ?? Math.max(totalBeds - totalOccupied, 0);
   const overallOccupancyRate = totalBeds > 0 ? Math.round((totalOccupied / totalBeds) * 100) : 0;
 
-  // Unconfigured bed types
   const existingTypes = new Set(bedTypesList.map((b) => b.bed_type));
-  const availableTypesToAdd = ALL_BED_TYPES.filter((t) => !existingTypes.has(t));
+  const availableTypesToAdd = ALL_BED_TYPES.filter((bt) => !existingTypes.has(bt));
+
+  const hasAnyBedData = bedTypesList.length > 0;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10" id="bed-management-screen">
@@ -221,9 +225,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
             <Bed className="w-5 h-5 text-blue-400" />
             {t('beds.title')}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            {t('beds.subtitle')}
-          </p>
+          <p className="text-sm text-slate-400 mt-1">{t('beds.subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -263,6 +265,8 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
       {/* Toast Feedback */}
       {feedback && (
         <div
+          role="status"
+          aria-live="polite"
           className={`p-4 rounded-xl border text-xs flex items-center justify-between ${
             feedback.type === 'success'
               ? 'bg-emerald-950/80 border-emerald-700/60 text-emerald-200'
@@ -277,7 +281,42 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
             )}
             <span>{feedback.message}</span>
           </div>
-          <button type="button" onClick={() => setFeedback(null)} className="text-slate-400 hover:text-slate-200">
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-slate-400 hover:text-slate-200"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Fetch Error Banner */}
+      {fetchError && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-4 rounded-xl border bg-rose-950/80 border-rose-700/60 text-rose-200 text-xs flex items-start gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-semibold text-rose-100">Failed to load bed data</div>
+            <div className="text-rose-300/90 mt-0.5">{fetchError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={loadBeds}
+            className="text-rose-300 hover:text-rose-100 text-[11px] font-semibold px-2 py-1 rounded border border-rose-700/60 hover:bg-rose-900/40 transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => setFetchError(null)}
+            className="text-rose-300 hover:text-rose-100"
+            aria-label="Dismiss"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -306,13 +345,17 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <span className="text-xs text-slate-400">{t('beds.total_beds')}:</span>
           <div className="text-2xl font-bold text-slate-100 mt-1">{totalBeds} Beds</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{bedTypesList.length} ward categories</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {bedTypesList.length} ward categories
+          </div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <span className="text-xs text-slate-400">{t('beds.occupied_beds')}:</span>
           <div className="text-2xl font-bold text-amber-400 mt-1">{totalOccupied} Beds</div>
-          <div className="text-[11px] text-amber-500 mt-0.5">{overallOccupancyRate}% {t('beds.occupancy_rate')}</div>
+          <div className="text-[11px] text-amber-500 mt-0.5">
+            {overallOccupancyRate}% {t('beds.occupancy_rate')}
+          </div>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -329,13 +372,24 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
             <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-400" />
             Loading bed wards from backend...
           </div>
-        ) : bedTypesList.length === 0 ? (
+        ) : !hasAnyBedData ? (
           <div className="col-span-2 p-8 text-center text-slate-400 bg-slate-900 border border-slate-800 rounded-xl">
-            No bed wards configured for this facility yet. Click "Add Bed Type" above to configure General, Oxygen, or ICU wards.
+            <Bed className="w-10 h-10 mx-auto mb-2 text-slate-700" />
+            <div className="text-sm font-semibold text-slate-300">
+              {fetchError ? 'Unable to load bed wards' : 'No bed wards configured'}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {fetchError
+                ? 'Retry once the backend is reachable.'
+                : 'Click "Add Bed Type" above to configure General, Oxygen, or ICU wards.'}
+            </div>
           </div>
         ) : (
           bedTypesList.map((bed) => {
-            const occupancyRate = bed.total_beds > 0 ? Math.round((bed.occupied_beds / bed.total_beds) * 100) : 0;
+            const occupancyRate =
+              bed.total_beds > 0
+                ? Math.round((bed.occupied_beds / bed.total_beds) * 100)
+                : 0;
             const isHighOccupancy = occupancyRate >= 80;
 
             return (
@@ -377,7 +431,6 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                   </span>
                 </div>
 
-                {/* Progress bar */}
                 <div className="space-y-1.5">
                   <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
                     <div
@@ -393,9 +446,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                   </div>
                 </div>
 
-                {/* Controls */}
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                  {/* +/- buttons */}
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -419,7 +470,6 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                     </button>
                   </div>
 
-                  {/* Settings & Toggle */}
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -430,6 +480,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                       }}
                       className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded border border-slate-700 text-xs"
                       title="Adjust Total Capacity"
+                      aria-label="Adjust total capacity"
                     >
                       <Sliders className="w-3.5 h-3.5" />
                     </button>
@@ -442,6 +493,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                           : 'text-emerald-400 border-emerald-900 hover:bg-emerald-950/40'
                       }`}
                       title={bed.is_active ? 'Deactivate Ward' : 'Reactivate Ward'}
+                      aria-label={bed.is_active ? 'Deactivate ward' : 'Reactivate ward'}
                     >
                       <Power className="w-3.5 h-3.5" />
                     </button>
@@ -466,6 +518,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                 type="button"
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -479,16 +532,18 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                   onChange={(e) => setNewBedType(e.target.value as BedTypeEnum)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 uppercase"
                 >
-                  {availableTypesToAdd.map((t) => (
-                    <option key={t} value={t}>
-                      {t} Ward
+                  {availableTypesToAdd.map((bt) => (
+                    <option key={bt} value={bt}>
+                      {bt} Ward
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">Total Bed Capacity *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  Total Bed Capacity *
+                </label>
                 <input
                   type="number"
                   value={newTotalBeds}
@@ -535,6 +590,7 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                 type="button"
                 onClick={() => setShowCapacityModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -542,11 +598,14 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
 
             <form onSubmit={handleUpdateCapacity} className="space-y-4 text-xs">
               <div className="text-slate-400">
-                Currently Occupied: <strong className="text-slate-200">{capacityTarget.occupied_beds}</strong>
+                Currently Occupied:{' '}
+                <strong className="text-slate-200">{capacityTarget.occupied_beds}</strong>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-300 mb-1">New Total Bed Capacity *</label>
+                <label className="block font-medium text-slate-300 mb-1">
+                  New Total Bed Capacity *
+                </label>
                 <input
                   type="number"
                   value={targetNewCapacity}
@@ -587,16 +646,27 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <History className="w-5 h-5 text-blue-400" />
-                Bed Occupancy Audit Logs (GET /beds/facility/history)
+                Bed Occupancy Audit Logs
               </h3>
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
                 className="text-slate-400 hover:text-slate-200"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {historyError && (
+              <div
+                role="alert"
+                className="p-3 bg-rose-950/70 border border-rose-800/60 rounded-lg text-rose-200 text-xs flex items-start gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{historyError}</span>
+              </div>
+            )}
 
             <div className="max-h-96 overflow-y-auto border border-slate-800 rounded-lg">
               <table className="w-full text-left text-xs text-slate-300">
@@ -620,7 +690,9 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                   ) : historyLogs.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-8 text-center text-slate-400">
-                        No occupancy changes logged yet.
+                        {historyError
+                          ? 'Unable to load audit history.'
+                          : 'No occupancy changes logged yet.'}
                       </td>
                     </tr>
                   ) : (
@@ -633,10 +705,12 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
                           {log.bed_type}
                         </td>
                         <td className="py-2.5 px-3 font-mono">
-                          {log.previous_occupied} &rarr; <span className="text-amber-400 font-bold">{log.new_occupied}</span>
+                          {log.previous_occupied} &rarr;{' '}
+                          <span className="text-amber-400 font-bold">{log.new_occupied}</span>
                         </td>
                         <td className="py-2.5 px-3 font-mono">
-                          {log.previous_total} &rarr; <span className="text-teal-400 font-bold">{log.new_total}</span>
+                          {log.previous_total} &rarr;{' '}
+                          <span className="text-teal-400 font-bold">{log.new_total}</span>
                         </td>
                         <td className="py-2.5 px-3 font-mono text-[10px] text-slate-500 truncate max-w-[100px]">
                           {log.recorded_by}
@@ -663,3 +737,5 @@ export const BedManagement: React.FC<BedManagementProps> = ({ beds = [], onUpdat
     </div>
   );
 };
+
+export default BedManagement;

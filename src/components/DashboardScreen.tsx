@@ -55,6 +55,7 @@ import { NationalDashboard } from './screens/l1/NationalDashboard';
 import { CrossStateRedistribution } from './screens/l1/CrossStateRedistribution';
 import { NationalAlerts } from './screens/l1/NationalAlerts';
 import { NationalReports } from './screens/l1/NationalReports';
+import { NationalForecast } from './screens/l1/NationalForecast';
 import { FlGlobalOverview } from './screens/l1/FlGlobalOverview';
 
 // L2 Screens
@@ -97,10 +98,10 @@ export const DashboardScreen: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // App-level mutable state for PHC operations & alerts
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY || []);
-  const [beds, setBeds] = useState(INITIAL_BEDS || []);
-  const [staff, setStaff] = useState(INITIAL_STAFF || []);
-  const [alerts, setAlerts] = useState<AlertNotification[]>(INITIAL_ALERTS || []);
+  const [inventory, setInventory] = useState([]);
+  const [beds, setBeds] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [alerts, setAlerts] = useState<AlertNotification[]>([]);
 
   const handleMarkAsRead = (id: string) => {
     setAlerts((prev) => (prev || []).map((a) => (a.id === id ? { ...a, isRead: true } : a)));
@@ -232,8 +233,8 @@ export const DashboardScreen: React.FC = () => {
           return <CrossStateRedistribution />;
         case 'national_alerts':
           return <NationalAlerts />;
-        case 'national_reports':
-          return <NationalReports />;
+        case 'national_forecast':
+          return <NationalForecast />;
         case 'fl_global_overview':
           return <FlGlobalOverview />;
         default:
