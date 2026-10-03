@@ -36,6 +36,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SUPPORTED_LANGUAGES } from '../i18n/translations';
 import { RoleTier, AlertNotification } from '../types';
 import { resolveUserTier, getTierNavItems, getDefaultScreenForTier, ROLE_TIER_METADATA } from '../utils/rbac';
+import { resolveUserState, resolveUserDistrict, resolveUserPhc } from '../data/geoConstants';
 import { SEED_ACCOUNTS } from '../data/seedAccounts';
 import { INITIAL_INVENTORY, INITIAL_BEDS, INITIAL_STAFF, INITIAL_ALERTS } from '../data/mockAppData';
 
@@ -96,6 +97,10 @@ export const DashboardScreen: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<string>(getDefaultScreenForTier(initialTier));
   const { language, setLanguage, t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const stateGeo = resolveUserState(user);
+  const districtGeo = resolveUserDistrict(user);
+  const phcGeo = resolveUserPhc(user);
 
   // App-level mutable state for PHC operations & alerts
   const [inventory, setInventory] = useState([]);
@@ -395,8 +400,14 @@ export const DashboardScreen: React.FC = () => {
             <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${tierMeta.badgeColor}`}>
               {tierMeta.tier} &bull; {tierMeta.title}
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">
-              {activeTier === 'L5' ? 'Ormanjhi' : activeTier === 'L3' ? 'Ranchi' : activeTier === 'L2' ? 'Jharkhand' : 'Grid'}
+            <span className="text-[10px] text-slate-400 font-mono">
+              {activeTier === 'L5'
+                ? phcGeo.name
+                : activeTier === 'L3'
+                ? `${districtGeo.name} District`
+                : activeTier === 'L2'
+                ? `${stateGeo.name} State`
+                : 'National Scope'}
             </span>
           </div>
 

@@ -44,6 +44,13 @@ import {
   TruckCreate,
   TruckUpdate,
   TruckListResponse,
+  FlRoundTriggerResponse,
+  FlStatusResponse,
+  FlRoundListResponse,
+  FlRoundDetailResponse,
+  FlModelResponse,
+  FacilityForecastResponse,
+  FacilityDrugForecastResponse,
 } from '../types';
 import { DEFAULT_BACKEND_URL, SEED_ACCOUNTS, DEFAULT_PASSWORD } from '../data/seedAccounts';
 
@@ -1017,6 +1024,139 @@ export class AuthApiService {
         Authorization: `Bearer ${accessToken}`,
       },
     });
+  }
+
+  // ===================== FEDERATED LEARNING ENDPOINTS =====================
+
+  // 48. Trigger hierarchical FL round (Super Admin)
+  public async triggerFlRound(accessToken: string): Promise<FlRoundTriggerResponse> {
+    return this.request<FlRoundTriggerResponse>(
+      '/fl/trigger-round',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 49. Get active FL status summary
+  public async getFlStatus(accessToken: string): Promise<FlStatusResponse> {
+    return this.request<FlStatusResponse>(
+      '/fl/status',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 50. List paginated historical FL rounds
+  public async listFlRounds(
+    accessToken: string,
+    params?: { page?: number; page_size?: number }
+  ): Promise<FlRoundListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request<FlRoundListResponse>(
+      `/fl/rounds${qs}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 51. Get detailed metrics and per-node models for an FL round
+  public async getFlRoundDetail(accessToken: string, roundId: string): Promise<FlRoundDetailResponse> {
+    return this.request<FlRoundDetailResponse>(
+      `/fl/rounds/${roundId}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 52. Mark a stuck RUNNING round as failed (Super Admin recovery)
+  public async abandonFlRound(accessToken: string, roundId: string): Promise<FlRoundDetailResponse> {
+    return this.request<FlRoundDetailResponse>(
+      `/fl/rounds/${roundId}/abandon`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 53. Get FL model metadata without exposing raw .pt weights
+  public async getFlModel(accessToken: string, modelId: string): Promise<FlModelResponse> {
+    return this.request<FlModelResponse>(
+      `/fl/models/${modelId}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // ===================== DEMAND FORECASTING ENDPOINTS =====================
+
+  // 54. Get latest 7-day demand forecasts for a facility
+  public async getFacilityForecast(
+    accessToken: string,
+    facilityId: string,
+    days: number = 7
+  ): Promise<FacilityForecastResponse> {
+    const query = new URLSearchParams();
+    if (days) query.append('days', String(days));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request<FacilityForecastResponse>(
+      `/forecast/facility/${facilityId}${qs}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  }
+
+  // 55. Get demand forecast for a specific drug at a facility
+  public async getFacilityDrugForecast(
+    accessToken: string,
+    facilityId: string,
+    drugId: string,
+    days: number = 7
+  ): Promise<FacilityDrugForecastResponse> {
+    const query = new URLSearchParams();
+    if (days) query.append('days', String(days));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+
+    return this.request<FacilityDrugForecastResponse>(
+      `/forecast/facility/${facilityId}/drug/${drugId}${qs}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
   }
 
   // ===================== MOCK FALLBACK HANDLER =====================

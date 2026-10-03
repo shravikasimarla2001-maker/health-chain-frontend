@@ -240,7 +240,10 @@ export const ALL_PHCS: PhcGeo[] = ALL_DISTRICTS.flatMap((district) => district.p
 export function getDistrictsForState(stateIdOrCode: string): DistrictGeo[] {
   if (!stateIdOrCode || stateIdOrCode === 'ALL') return ALL_DISTRICTS;
   const state = ALL_STATES.find(
-    (s) => s.id === stateIdOrCode || s.code.toUpperCase() === stateIdOrCode.toUpperCase()
+    (s) =>
+      s.id === stateIdOrCode ||
+      s.code.toUpperCase() === stateIdOrCode.toUpperCase() ||
+      s.name.toLowerCase() === stateIdOrCode.toLowerCase()
   );
   return state ? state.districts : [];
 }
@@ -249,7 +252,10 @@ export function getDistrictsForState(stateIdOrCode: string): DistrictGeo[] {
 export function getPhcsForDistrict(districtIdOrCode: string): PhcGeo[] {
   if (!districtIdOrCode || districtIdOrCode === 'ALL') return ALL_PHCS;
   const district = ALL_DISTRICTS.find(
-    (d) => d.id === districtIdOrCode || d.code.toUpperCase() === districtIdOrCode.toUpperCase()
+    (d) =>
+      d.id === districtIdOrCode ||
+      d.code.toUpperCase() === districtIdOrCode.toUpperCase() ||
+      d.name.toLowerCase() === districtIdOrCode.toLowerCase()
   );
   return district ? district.phcs : [];
 }
@@ -273,7 +279,9 @@ export function resolveGeoLocation(id?: string | null): {
   }
 
   // Check flat JSON dataset first
-  const jsonItem = GEO_CONSTANTS_JSON.find((item) => item.id === id || item.code === id);
+  const jsonItem = GEO_CONSTANTS_JSON.find(
+    (item) => item.id === id || item.code.toUpperCase() === id.toUpperCase() || item.name.toLowerCase() === id.toLowerCase()
+  );
   if (jsonItem) {
     if (jsonItem.level === 'FACILITY' || jsonItem.level === 'PHC') {
       return {
@@ -302,7 +310,9 @@ export function resolveGeoLocation(id?: string | null): {
   }
 
   // Check PHCs
-  const phc = ALL_PHCS.find((p) => p.id === id || p.code === id);
+  const phc = ALL_PHCS.find(
+    (p) => p.id === id || p.code.toUpperCase() === id.toUpperCase() || p.name.toLowerCase() === id.toLowerCase()
+  );
   if (phc) {
     return {
       type: 'PHC',
@@ -313,7 +323,9 @@ export function resolveGeoLocation(id?: string | null): {
   }
 
   // Check Districts
-  const district = ALL_DISTRICTS.find((d) => d.id === id || d.code === id);
+  const district = ALL_DISTRICTS.find(
+    (d) => d.id === id || d.code.toUpperCase() === id.toUpperCase() || d.name.toLowerCase() === id.toLowerCase()
+  );
   if (district) {
     return {
       type: 'DISTRICT',
@@ -324,7 +336,9 @@ export function resolveGeoLocation(id?: string | null): {
   }
 
   // Check States
-  const state = ALL_STATES.find((s) => s.id === id || s.code === id);
+  const state = ALL_STATES.find(
+    (s) => s.id === id || s.code.toUpperCase() === id.toUpperCase() || s.name.toLowerCase() === id.toLowerCase()
+  );
   if (state) {
     return {
       type: 'STATE',
@@ -336,3 +350,165 @@ export function resolveGeoLocation(id?: string | null): {
 
   return { type: 'UNKNOWN', name: id, details: 'Custom Scope' };
 }
+
+// Helper: Resolve active State for logged-in user or scope
+export function resolveUserState(user?: {
+  scope_level?: string;
+  scope_id?: string | null;
+  email?: string;
+  full_name?: string;
+} | null): StateGeo {
+  if (user?.scope_id) {
+    // 1. Check direct State
+    const byId = ALL_STATES.find(
+      (s) =>
+        s.id === user.scope_id ||
+        s.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        s.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (byId) return byId;
+
+    // 2. Check if scope_id is a District
+    const distMatch = ALL_DISTRICTS.find(
+      (d) =>
+        d.id === user.scope_id ||
+        d.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        d.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (distMatch) {
+      const stateOfDist = ALL_STATES.find((s) => s.id === distMatch.stateId || s.name === distMatch.stateName);
+      if (stateOfDist) return stateOfDist;
+    }
+
+    // 3. Check if scope_id is a PHC
+    const phcMatch = ALL_PHCS.find(
+      (p) =>
+        p.id === user.scope_id ||
+        p.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        p.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (phcMatch) {
+      const stateOfPhc = ALL_STATES.find((s) => s.id === phcMatch.stateId || s.name === phcMatch.stateName);
+      if (stateOfPhc) return stateOfPhc;
+    }
+  }
+
+  const email = (user?.email || '').toLowerCase();
+  const name = (user?.full_name || '').toLowerCase();
+
+  if (email.includes('.mh') || name.includes('maharashtra')) {
+    const mh = ALL_STATES.find((s) => s.code === 'MH');
+    if (mh) return mh;
+  }
+
+  // Default to Jharkhand (primary state in geoConstants)
+  return ALL_STATES.find((s) => s.code === 'JH') || ALL_STATES[0];
+}
+
+// Helper: Resolve active District for logged-in user or scope
+export function resolveUserDistrict(user?: {
+  scope_level?: string;
+  scope_id?: string | null;
+  email?: string;
+  full_name?: string;
+} | null): DistrictGeo {
+  if (user?.scope_id) {
+    // 1. Check direct District
+    const byId = ALL_DISTRICTS.find(
+      (d) =>
+        d.id === user.scope_id ||
+        d.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        d.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (byId) return byId;
+
+    // 2. Check if scope_id is a PHC
+    const phcMatch = ALL_PHCS.find(
+      (p) =>
+        p.id === user.scope_id ||
+        p.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        p.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (phcMatch) {
+      const distOfPhc = ALL_DISTRICTS.find((d) => d.id === phcMatch.districtId || d.name === phcMatch.districtName);
+      if (distOfPhc) return distOfPhc;
+    }
+  }
+
+  const email = (user?.email || '').toLowerCase();
+  const name = (user?.full_name || '').toLowerCase();
+
+  if (email.includes('.ram') || name.includes('ramgarh')) {
+    const ram = ALL_DISTRICTS.find((d) => d.code === 'RAM');
+    if (ram) return ram;
+  }
+  if (email.includes('.nag') || name.includes('nagpur')) {
+    const nag = ALL_DISTRICTS.find((d) => d.code === 'NAG');
+    if (nag) return nag;
+  }
+  if (email.includes('.pun') || name.includes('pune')) {
+    const pun = ALL_DISTRICTS.find((d) => d.code === 'PUN');
+    if (pun) return pun;
+  }
+  if (email.includes('.ran') || name.includes('ranchi')) {
+    const ran = ALL_DISTRICTS.find((d) => d.code === 'RAN');
+    if (ran) return ran;
+  }
+
+  // Default to Ranchi (primary district in geoConstants)
+  return ALL_DISTRICTS.find((d) => d.code === 'RAN') || ALL_DISTRICTS[0];
+}
+
+// Helper: Resolve active PHC for logged-in user or scope
+export function resolveUserPhc(user?: {
+  scope_level?: string;
+  scope_id?: string | null;
+  email?: string;
+  full_name?: string;
+} | null): PhcGeo {
+  if (user?.scope_id) {
+    const byId = ALL_PHCS.find(
+      (p) =>
+        p.id === user.scope_id ||
+        p.code.toUpperCase() === user.scope_id?.toUpperCase() ||
+        p.name.toLowerCase() === user.scope_id?.toLowerCase()
+    );
+    if (byId) return byId;
+  }
+
+  const email = (user?.email || '').toLowerCase();
+  const name = (user?.full_name || '').toLowerCase();
+
+  if (email.includes('.kan') || name.includes('kanke')) {
+    const kan = ALL_PHCS.find((p) => p.code === 'KAN_PHC');
+    if (kan) return kan;
+  }
+  if (email.includes('.gol') || name.includes('gola')) {
+    const gol = ALL_PHCS.find((p) => p.code === 'GOL_PHC');
+    if (gol) return gol;
+  }
+  if (email.includes('.pat') || name.includes('patratu')) {
+    const pat = ALL_PHCS.find((p) => p.code === 'PAT_PHC');
+    if (pat) return pat;
+  }
+  if (email.includes('.hin') || name.includes('hingna')) {
+    const hin = ALL_PHCS.find((p) => p.code === 'HIN_PHC');
+    if (hin) return hin;
+  }
+  if (email.includes('.kam') || name.includes('kamptee')) {
+    const kam = ALL_PHCS.find((p) => p.code === 'KAM_PHC');
+    if (kam) return kam;
+  }
+  if (email.includes('.hav') || name.includes('haveli')) {
+    const hav = ALL_PHCS.find((p) => p.code === 'HAV_PHC');
+    if (hav) return hav;
+  }
+  if (email.includes('.mul') || name.includes('mulshi')) {
+    const mul = ALL_PHCS.find((p) => p.code === 'MUL_PHC');
+    if (mul) return mul;
+  }
+
+  // Default to Ormanjhi PHC (primary PHC in geoConstants)
+  return ALL_PHCS.find((p) => p.code === 'ORM_PHC') || ALL_PHCS[0];
+}
+

@@ -26,6 +26,13 @@ import {
   AttendanceSummaryResponse,
   ApprovePhcRequestResponse,
   ApiLogEntry,
+  FlRoundTriggerResponse,
+  FlStatusResponse,
+  FlRoundListResponse,
+  FlRoundDetailResponse,
+  FlModelResponse,
+  FacilityForecastResponse,
+  FacilityDrugForecastResponse,
 } from '../types';
 import { authApiService } from './authApi';
 
@@ -450,8 +457,39 @@ class HealthChainApiService {
   }
 
   // ==========================================
-  // 7. FEDERATED LEARNING ENDPOINTS
+  // 7. FEDERATED LEARNING ENDPOINTS (OpenAPI)
   // ==========================================
+
+  public async triggerFlRound(): Promise<FlRoundTriggerResponse> {
+    return this.request<FlRoundTriggerResponse>('/fl/trigger-round', { method: 'POST' });
+  }
+
+  public async getFlStatus(): Promise<FlStatusResponse> {
+    return this.request<FlStatusResponse>('/fl/status', { method: 'GET' });
+  }
+
+  public async listFlRounds(params?: {
+    page?: number;
+    page_size?: number;
+  }): Promise<FlRoundListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<FlRoundListResponse>(`/fl/rounds${qs}`, { method: 'GET' });
+  }
+
+  public async getFlRoundDetail(roundId: string): Promise<FlRoundDetailResponse> {
+    return this.request<FlRoundDetailResponse>(`/fl/rounds/${roundId}`, { method: 'GET' });
+  }
+
+  public async abandonFlRound(roundId: string): Promise<FlRoundDetailResponse> {
+    return this.request<FlRoundDetailResponse>(`/fl/rounds/${roundId}/abandon`, { method: 'POST' });
+  }
+
+  public async getFlModel(modelId: string): Promise<FlModelResponse> {
+    return this.request<FlModelResponse>(`/fl/models/${modelId}`, { method: 'GET' });
+  }
 
   public async getCurrentFlRound(): Promise<{
     roundNumber: number | null;
@@ -568,8 +606,34 @@ class HealthChainApiService {
   }
 
   // ==========================================
-  // 11. FORECAST ENDPOINTS
+  // 11. FORECAST ENDPOINTS (OpenAPI)
   // ==========================================
+
+  public async getFacilityForecast(
+    facilityId: string,
+    days: number = 7
+  ): Promise<FacilityForecastResponse> {
+    const query = new URLSearchParams();
+    if (days) query.append('days', String(days));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<FacilityForecastResponse>(`/forecast/facility/${facilityId}${qs}`, {
+      method: 'GET',
+    });
+  }
+
+  public async getFacilityDrugForecast(
+    facilityId: string,
+    drugId: string,
+    days: number = 7
+  ): Promise<FacilityDrugForecastResponse> {
+    const query = new URLSearchParams();
+    if (days) query.append('days', String(days));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<FacilityDrugForecastResponse>(
+      `/forecast/facility/${facilityId}/drug/${drugId}${qs}`,
+      { method: 'GET' }
+    );
+  }
 
   public async getNationalForecast(): Promise<{
     aggregate: any;

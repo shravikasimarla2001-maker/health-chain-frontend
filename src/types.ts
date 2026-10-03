@@ -382,7 +382,8 @@ export type L3ScreenKey =
 
 export type L5ScreenKey =
   | 'phc_dashboard'
-  | 'inventory_stock' 
+  | 'inventory_stock'
+  | 'inventory_management'
   | 'bed_management'
   | 'staff_attendance'
   | 'stock_request'
@@ -563,11 +564,13 @@ export interface PaginationMeta {
   total_pages: number;
 }
 
-// ---------------- DrugCreate alias (matches component import) ----------------
-
-// The component imports `DrugCreate`, but the file already exports `DrugCreateRequest`.
-// This alias keeps backward-compatibility without renaming the existing type.
+// ---------------- Aliases (matches component and service imports) ----------------
 export type DrugCreate = DrugCreateRequest;
+export type UserCreate = UserCreateRequest;
+export type UserUpdate = UserUpdateRequest;
+export type RoleResponse = RoleInfo;
+export type BedCreate = BedCreateRequest;
+export type BedUpdate = BedUpdateRequest;
 
 // ---------------- Additional Inventory Scope Response Wrappers ----------------
 
@@ -668,5 +671,140 @@ export interface AttendanceHistoryListResponse {
   items: AttendanceResponse[];
   pagination: PaginationMeta;
 }
+
+// ---------------- Federated Learning OpenAPI Types ----------------
+
+export type FlRoundStatusEnum =
+  | 'PENDING'
+  | 'RUNNING'
+  | 'AGGREGATING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'ABANDONED'
+  | 'pending'
+  | 'running'
+  | 'aggregating'
+  | 'completed'
+  | 'failed'
+  | 'abandoned';
+
+export interface FlRoundTriggerResponse {
+  round_id: string;
+  round_number: number;
+  status: FlRoundStatusEnum | string;
+  message: string;
+  initiated_at: string;
+  participating_nodes?: number;
+}
+
+export interface FlNodeModelItem {
+  id: string;
+  node_id: string;
+  node_name?: string;
+  tier: 'national' | 'state' | 'district' | 'phc' | string;
+  accuracy?: number | null;
+  loss?: number | null;
+  samples_count?: number;
+  parameters_checksum?: string;
+  submitted_at?: string;
+  status?: 'submitted' | 'aggregated' | 'rejected' | string;
+}
+
+export interface FlRoundDetailResponse {
+  id: string;
+  round_number: number;
+  status: FlRoundStatusEnum | string;
+  started_at: string;
+  completed_at?: string | null;
+  duration_seconds?: number | null;
+  global_loss?: number | null;
+  global_accuracy?: number | null;
+  convergence_rate?: number | null;
+  participating_nodes_count: number;
+  total_nodes_count: number;
+  tier1_national_nodes?: number;
+  tier2_state_nodes?: number;
+  tier3_district_nodes?: number;
+  tier4_phc_nodes?: number;
+  node_models?: FlNodeModelItem[];
+  metrics?: Record<string, any>;
+  error_message?: string | null;
+}
+
+export interface FlRoundListResponse {
+  items: FlRoundDetailResponse[];
+  pagination: PaginationMeta;
+}
+
+export interface FlModelResponse {
+  id: string;
+  round_id: string;
+  round_number: number;
+  model_version: string;
+  model_architecture?: string;
+  parameters_count?: number;
+  accuracy: number;
+  loss: number;
+  mae?: number;
+  rmse?: number;
+  differential_privacy_epsilon?: number;
+  differential_privacy_delta?: number;
+  created_at: string;
+  is_active_serving: boolean;
+  metadata?: Record<string, any>;
+}
+
+export interface FlStatusResponse {
+  active_round?: FlRoundDetailResponse | null;
+  latest_completed_round?: FlRoundDetailResponse | null;
+  serving_model?: FlModelResponse | null;
+  total_rounds_completed: number;
+  active_nodes_count: number;
+  system_status: 'IDLE' | 'TRAINING' | 'AGGREGATING' | 'ERROR' | 'idle' | 'training' | 'aggregating' | 'error' | string;
+  last_updated: string;
+}
+
+// ---------------- Demand Forecasting OpenAPI Types ----------------
+
+export interface DailyForecastPoint {
+  date: string;
+  predicted_consumption: number;
+  confidence_lower?: number;
+  confidence_upper?: number;
+}
+
+export interface FacilityForecastItem {
+  drug_id: string;
+  drug_name: string;
+  category?: DrugCategoryEnum | string;
+  unit?: string;
+  current_stock: number;
+  predicted_demand: number;
+  buffer_days_remaining: number;
+  risk_level: 'CRITICAL' | 'REORDER' | 'ADEQUATE' | 'HIGH' | 'LOW' | 'critical' | 'reorder' | 'adequate' | 'high' | 'low' | string;
+  daily_forecast?: DailyForecastPoint[];
+  recommendation?: string;
+  deficit?: number;
+}
+
+export interface FacilityForecastAggregate {
+  total_predicted_demand?: number;
+  critical_shortages_count?: number;
+  buffer_health_status?: string;
+  horizon_days?: number;
+}
+
+export interface FacilityForecastResponse {
+  facility_id: string;
+  facility_name?: string;
+  model_id?: string;
+  model_version?: string;
+  forecast_horizon_days: number;
+  generated_at: string;
+  items: FacilityForecastItem[];
+  aggregate?: FacilityForecastAggregate;
+}
+
+export type FacilityDrugForecastResponse = FacilityForecastResponse;
 
 

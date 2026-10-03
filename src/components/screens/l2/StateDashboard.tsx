@@ -12,7 +12,8 @@ import {
   Building2,
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
-import { ALL_DISTRICTS } from '../../../data/geoConstants';
+import { ALL_DISTRICTS, resolveUserState, getDistrictsForState } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 interface DistrictMetric {
   code: string;
@@ -34,6 +35,10 @@ interface StateDashboardProps {
 }
 
 export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
+  const stateGeo = resolveUserState(user);
+  const stateDistricts = getDistrictsForState(stateGeo.id);
+
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
 
@@ -46,12 +51,43 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
   // ===================== FETCH =====================
   const fetchDistricts = useCallback(async () => {
     setRefreshing(true);
+    setFetchError(null);
     try {
-      // TODO: replace with real endpoint when available:
-      // const res = await healthChainApi.getStateDashboardSummary();
-      // setDistricts(res.districts ?? []);
-      setDistricts([]);
-      setFetchError(null);
+      // Build district metrics from geoConstants for this state
+      const districtPromises = stateDistricts.map(async (dist) => {
+        let totalBeds = 0;
+        let occupiedBeds = 0;
+
+        // Fetch live bed summaries for PHCs under this district in parallel
+        const bedResults = await Promise.allSettled(
+          dist.phcs.map((phc) => healthChainApi.getFacilityBedSummary(phc.id))
+        );
+
+        for (const res of bedResults) {
+          if (res.status === 'fulfilled' && res.value) {
+            totalBeds += res.value.total_beds || 0;
+            occupiedBeds += res.value.total_occupied || 0;
+          }
+        }
+
+        return {
+          code: dist.code,
+          name: `${dist.name} District`,
+          facilitiesCount: dist.phcs.length,
+          stockOutRisk: 'LOW' as const,
+          bedOccupancyPercent: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
+          totalBeds,
+          occupiedBeds,
+          staffAttendanceRate: 0,
+          criticalShortages: [],
+          fifteenDayStockDays: 0,
+          bufferDaysRemaining: 0,
+          lastDataSync: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+      });
+
+      const metrics = await Promise.all(districtPromises);
+      setDistricts(metrics);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load state dashboard';
       setDistricts([]);
@@ -60,16 +96,16 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [stateDistricts]);
 
   useEffect(() => {
     fetchDistricts();
   }, [fetchDistricts]);
 
   // ===================== FILTERING =====================
-  // Only show districts that exist in geoConstants (same as original)
+  // Only show districts belonging to this State from geoConstants
   const availableDistricts = districts.filter((d) =>
-    ALL_DISTRICTS.some((geo) => geo.code.toUpperCase() === d.code.toUpperCase())
+    stateDistricts.some((geo) => geo.code.toUpperCase() === d.code.toUpperCase())
   );
 
   const filteredDistricts =
@@ -156,18 +192,18 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
-                L2 — State User
+                L2 — {stateGeo.name} State User
               </span>
               <span className="text-xs text-slate-400">
-                State Health Operations
+                {stateGeo.name} State Operations ({stateGeo.code}) &bull; Region: {stateGeo.region}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-slate-100 mt-2">
-              State Supply Chain Dashboard
+              {stateGeo.name} Supply Chain Dashboard
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
               District-wise aggregated medicine buffer inventory, intra-state redistribution
-              queues, bed occupancy trackers, and FL model contributions.
+              queues, bed occupancy trackers, and FL model contributions across {stateDistricts.length} districts in {stateGeo.name}.
             </p>
           </div>
 
@@ -236,12 +272,12 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
           <Building2 className="w-12 h-12 text-slate-700 mx-auto mb-3" />
           <div className="text-sm font-semibold text-slate-300">
-            No district data available
+            No district data available for {stateGeo.name}
           </div>
           <div className="text-xs text-slate-500 mt-1">
             {fetchError
               ? 'Retry once the backend is reachable.'
-              : 'No districts report data for the selected filter.'}
+              : `No reported district records under ${stateGeo.name} State.`}
           </div>
         </div>
       ) : (
@@ -256,10 +292,10 @@ export const StateDashboard: React.FC<StateDashboardProps> = ({ onNavigate }) =>
                 onChange={(e) => setSelectedDistrictCode(e.target.value)}
                 className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-emerald-500"
               >
-                <option value="ALL">All Districts (Available in State)</option>
-                {availableDistricts.map((d) => (
+                <option value="ALL">All Districts ({stateGeo.name} - {stateDistricts.length} Districts)</option>
+                {stateDistricts.map((d) => (
                   <option key={d.code} value={d.code}>
-                    {d.name} ({d.code})
+                    {d.name} District ({d.code})
                   </option>
                 ))}
               </select>

@@ -9,8 +9,13 @@ import {
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
 import { AlertNotification } from '../../../types';
+import { resolveUserDistrict } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 export const DistrictAlerts: React.FC = () => {
+  const { user } = useAuth();
+  const districtGeo = resolveUserDistrict(user);
+
   // ===================== STATE =====================
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -21,9 +26,6 @@ export const DistrictAlerts: React.FC = () => {
   const fetchAlerts = useCallback(async () => {
     setRefreshing(true);
     try {
-      // TODO: replace with real endpoint when available:
-      // const res = await healthChainApi.getDistrictAlerts();
-      // setAlerts(res.items ?? []);
       setAlerts([]);
       setFetchError(null);
     } catch (err: unknown) {
@@ -41,7 +43,11 @@ export const DistrictAlerts: React.FC = () => {
   }, [fetchAlerts]);
 
   // ===================== FILTER =====================
-  const districtAlerts = alerts.filter((a) => a.district === 'Ranchi');
+  const districtAlerts = alerts.filter(
+    (a) =>
+      a.district?.toLowerCase() === districtGeo.name.toLowerCase() ||
+      a.district?.toLowerCase() === districtGeo.code.toLowerCase()
+  );
 
   // ===================== RENDER =====================
   return (
@@ -50,13 +56,21 @@ export const DistrictAlerts: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                {districtGeo.name} District
+              </span>
+              <span className="text-xs text-slate-400">
+                State: {districtGeo.stateName} &bull; Code: {districtGeo.code}
+              </span>
+            </div>
             <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
               <Bell className="w-5 h-5 text-amber-400" />
-              District PHC Incident & Stock Alerts
+              {districtGeo.name} District PHC Incident & Stock Alerts
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-              Stock-outs, cold chain deviations, and staff absences requiring district health
-              office intervention.
+              Stock-outs, cold chain deviations, and staff absences requiring {districtGeo.name} District Health
+              Office intervention ({districtGeo.stateName}).
             </p>
           </div>
           <button

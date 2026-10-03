@@ -11,7 +11,8 @@ import {
   MapPin,
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
-import { ALL_PHCS } from '../../../data/geoConstants';
+import { ALL_PHCS, resolveUserDistrict, getPhcsForDistrict } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 interface PhcOverview {
   id: string;
@@ -32,6 +33,10 @@ interface DistrictDashboardProps {
 }
 
 export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
+  const districtGeo = resolveUserDistrict(user);
+  const districtPhcs = getPhcsForDistrict(districtGeo.id);
+
   const [selectedPhcId, setSelectedPhcId] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'15_DAYS' | 'BUFFER_DAYS'>('15_DAYS');
 
@@ -44,12 +49,60 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
   // ===================== FETCH =====================
   const fetchPhcs = useCallback(async () => {
     setRefreshing(true);
+    setFetchError(null);
     try {
-      // TODO: replace with real endpoint when available:
-      // const res = await healthChainApi.getDistrictDashboardSummary();
-      // setPhcs(res.phcs ?? []);
-      setPhcs([]);
-      setFetchError(null);
+      const phcPromises = districtPhcs.map(async (geo) => {
+        let totalBeds = 0;
+        let occupiedBeds = 0;
+        let stockStatus: 'CRITICAL' | 'REORDER' | 'ADEQUATE' = 'ADEQUATE';
+        let fifteenDayStockDays = 0;
+        let bufferDaysRemaining = 0;
+
+        try {
+          const bedSummary = await healthChainApi.getFacilityBedSummary(geo.id);
+          if (bedSummary) {
+            totalBeds = bedSummary.total_beds || 0;
+            occupiedBeds = bedSummary.total_occupied || 0;
+          }
+        } catch {
+          // No live beds found for this facility
+        }
+
+        try {
+          const forecast = await healthChainApi.getFacilityForecast(geo.id, 7);
+          if (forecast?.items && forecast.items.length > 0) {
+            const hasCrit = forecast.items.some((i) => i.risk_level?.toUpperCase() === 'CRITICAL');
+            const hasReorder = forecast.items.some((i) => i.risk_level?.toUpperCase() === 'REORDER');
+            if (hasCrit) stockStatus = 'CRITICAL';
+            else if (hasReorder) stockStatus = 'REORDER';
+
+            const bufferItem = forecast.items.find((i) => i.buffer_days_remaining !== undefined);
+            if (bufferItem && bufferItem.buffer_days_remaining !== undefined) {
+              bufferDaysRemaining = Math.round(bufferItem.buffer_days_remaining);
+              fifteenDayStockDays = bufferDaysRemaining + 7;
+            }
+          }
+        } catch {
+          // No live forecast found for this facility
+        }
+
+        return {
+          id: geo.id,
+          name: `${geo.name} (${geo.code})`,
+          medicalOfficer: '—',
+          stockStatus,
+          totalBeds,
+          occupiedBeds,
+          staffPresentCount: 0,
+          totalStaffCount: 0,
+          pendingIndents: 0,
+          fifteenDayStockDays,
+          bufferDaysRemaining,
+        };
+      });
+
+      const metrics = await Promise.all(phcPromises);
+      setPhcs(metrics);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load district dashboard';
       setPhcs([]);
@@ -58,18 +111,19 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [districtPhcs]);
 
   useEffect(() => {
     fetchPhcs();
   }, [fetchPhcs]);
 
   // ===================== FILTERING =====================
-  // Only show PHCs that exist in geoConstants (matches original intent)
+  // Only show PHCs that belong under this specific District from geoConstants
   const availablePhcs = phcs.filter((p) =>
-    ALL_PHCS.some(
+    districtPhcs.some(
       (geo) =>
         geo.id === p.id ||
+        geo.code.toUpperCase() === p.id?.toUpperCase() ||
         geo.name.toLowerCase().includes(p.name.toLowerCase()) ||
         p.name.toLowerCase().includes(geo.name.toLowerCase())
     )
@@ -154,16 +208,18 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-900/60 text-amber-300 border border-amber-700/50">
-                L3 — District User
+                L3 — {districtGeo.name} District User
               </span>
-              <span className="text-xs text-slate-400">District Health Hub</span>
+              <span className="text-xs text-slate-400">
+                {districtGeo.name} District Operations &bull; State: {districtGeo.stateName} &bull; Code: {districtGeo.code}
+              </span>
             </div>
             <h1 className="text-2xl font-bold text-slate-100 mt-2">
-              District Healthcare Operations
+              {districtGeo.name} District Healthcare Operations
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
               PHC-wise aggregated monitoring, hospital bed availability, PHC indent approvals,
-              and local stock redistribution.
+              and local stock redistribution across {districtPhcs.length} facilities under {districtGeo.name} District.
             </p>
           </div>
 
@@ -222,12 +278,12 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
           <Building className="w-12 h-12 text-slate-700 mx-auto mb-3" />
           <div className="text-sm font-semibold text-slate-300">
-            No PHC data available
+            No PHC data available for {districtGeo.name} District
           </div>
           <div className="text-xs text-slate-500 mt-1">
             {fetchError
               ? 'Retry once the backend is reachable.'
-              : 'No PHCs report data for the selected filter.'}
+              : `No reported PHC facility records under ${districtGeo.name} District (${districtGeo.stateName}).`}
           </div>
         </div>
       ) : (
@@ -242,10 +298,10 @@ export const DistrictDashboard: React.FC<DistrictDashboardProps> = ({ onNavigate
                 onChange={(e) => setSelectedPhcId(e.target.value)}
                 className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium focus:outline-none focus:border-amber-500"
               >
-                <option value="ALL">All PHCs (Available in District)</option>
-                {availablePhcs.map((p) => (
+                <option value="ALL">All PHCs ({districtGeo.name} District - {districtPhcs.length} Facilities)</option>
+                {districtPhcs.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.name} ({p.code})
                   </option>
                 ))}
               </select>

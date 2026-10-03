@@ -10,8 +10,13 @@ import {
 } from 'lucide-react';
 import { healthChainApi } from '../../../services/healthChainApi';
 import { AlertNotification } from '../../../types';
+import { resolveUserState } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 export const StateAlerts: React.FC = () => {
+  const { user } = useAuth();
+  const stateGeo = resolveUserState(user);
+
   // ===================== STATE =====================
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -22,9 +27,6 @@ export const StateAlerts: React.FC = () => {
   const fetchAlerts = useCallback(async () => {
     setRefreshing(true);
     try {
-      // TODO: replace with real endpoint when available:
-      // const res = await healthChainApi.getStateAlerts();
-      // setAlerts(res.items ?? []);
       setAlerts([]);
       setFetchError(null);
     } catch (err: unknown) {
@@ -42,12 +44,10 @@ export const StateAlerts: React.FC = () => {
   }, [fetchAlerts]);
 
   // ===================== FILTER =====================
-  // Same state-alert filter as original
   const stateAlerts = alerts.filter(
     (a) =>
-      a.state === 'Jharkhand' ||
-      a.district === 'Bokaro' ||
-      a.district === 'Ramgarh'
+      a.state?.toLowerCase() === stateGeo.name.toLowerCase() ||
+      a.state?.toLowerCase() === stateGeo.code.toLowerCase()
   );
 
   // ===================== RENDER =====================
@@ -57,13 +57,21 @@ export const StateAlerts: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                L2 — {stateGeo.name} State
+              </span>
+              <span className="text-xs text-slate-400">
+                Region: {stateGeo.region} &bull; Code: {stateGeo.code}
+              </span>
+            </div>
             <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
               <AlertOctagon className="w-5 h-5 text-emerald-400" />
-              State Supply Chain & Cold Chain Deviation Alerts
+              {stateGeo.name} State Supply Chain & Cold Chain Deviation Alerts
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-3xl">
               Monitor district-level cold storage excursions, near-expiry drug batches, and buffer
-              stock alerts across the state.
+              stock alerts across {stateGeo.name} State.
             </p>
           </div>
           <button

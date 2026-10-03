@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { ArrowLeftRight, CheckCircle2, XCircle, Truck, MapPin } from 'lucide-react';
 import { INITIAL_TRANSFERS } from '../../../data/mockAppData';
 import { RedistributionTransfer } from '../../../types';
+import { resolveUserState } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 export const StateRedistribution: React.FC = () => {
+  const { user } = useAuth();
+  const stateGeo = resolveUserState(user);
+
   const [transfers, setTransfers] = useState<RedistributionTransfer[]>(
     (INITIAL_TRANSFERS || []).filter((t) => t.tier === 'INTRA_STATE')
   );
@@ -12,7 +17,7 @@ export const StateRedistribution: React.FC = () => {
   const handleApprove = (id: string) => {
     setTransfers(
       transfers.map((t) =>
-        t.id === id ? { ...t, status: 'APPROVED', approvedBy: 'Jharkhand State Approver' } : t
+        t.id === id ? { ...t, status: 'APPROVED', approvedBy: `${stateGeo.name} State Approver` } : t
       )
     );
     setMsg('Transfer approved! Inter-district logistics order issued to civil surgeon.');
@@ -29,12 +34,17 @@ export const StateRedistribution: React.FC = () => {
     <div className="space-y-6 max-w-6xl mx-auto pb-10" id="state-redistribution-screen">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-xl p-6">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+              L2 — {stateGeo.name} State
+            </span>
+          </div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <ArrowLeftRight className="w-5 h-5 text-emerald-400" />
-            Intra-State (District-to-District) Redistribution Queue
+            {stateGeo.name} State Intra-State Redistribution Queue
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Review and authorize district-level medicine reallocations across Jharkhand districts (e.g. Dhanbad surplus to Ranchi deficit).
+            Review and authorize district-level medicine reallocations across {stateGeo.name} State districts.
           </p>
         </div>
       </div>

@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { ArrowRightLeft, CheckCircle2, Truck, Sparkles, X } from 'lucide-react';
 import { INITIAL_TRANSFERS } from '../../../data/mockAppData';
 import { RedistributionTransfer } from '../../../types';
+import { resolveUserDistrict } from '../../../data/geoConstants';
+import { useAuth } from '../../../context/AuthContext';
 
 export const RedistributionRecommendations: React.FC = () => {
+  const { user } = useAuth();
+  const districtGeo = resolveUserDistrict(user);
+
   const [transfers, setTransfers] = useState<RedistributionTransfer[]>(
     (INITIAL_TRANSFERS || []).filter((t) => t.tier === 'INTER_PHC')
   );
@@ -11,7 +16,7 @@ export const RedistributionRecommendations: React.FC = () => {
 
   const handleApprove = (id: string) => {
     setTransfers(
-      transfers.map((t) => (t.id === id ? { ...t, status: 'APPROVED', approvedBy: 'Ranchi District Approver' } : t))
+      transfers.map((t) => (t.id === id ? { ...t, status: 'APPROVED', approvedBy: `${districtGeo.name} District Approver` } : t))
     );
     setFeedback('PHC Redistribution Transfer authorized! Pickup dispatched.');
     setTimeout(() => setFeedback(null), 3000);
@@ -26,17 +31,20 @@ export const RedistributionRecommendations: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10" id="redistribution-recommendations-screen">
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> AI Optimal Logistics Matching
+        <div className="flex items-center gap-2 mb-2">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-900/60 text-amber-300 border border-amber-700/50">
+            {districtGeo.name} District
+          </span>
+          <span className="text-xs text-slate-400">
+            State: {districtGeo.stateName} &bull; Code: {districtGeo.code}
           </span>
         </div>
-        <h1 className="text-xl font-bold text-slate-100 mt-2 flex items-center gap-2">
+        <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <ArrowRightLeft className="w-5 h-5 text-amber-400" />
-          Inter-PHC Redistribution Recommendations
+          {districtGeo.name} District Inter-PHC Redistribution
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Algorithmic redistribution between Ranchi district PHCs to resolve zero-stock emergencies without placing new procurement orders.
+          Algorithmic redistribution between {districtGeo.name} District PHCs to resolve zero-stock emergencies without placing new procurement orders.
         </p>
       </div>
 
